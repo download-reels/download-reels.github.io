@@ -1,7 +1,13 @@
 /**
- * Clipper - Cloudflare Worker Proxy & Video Resolver
+ * Clipper - Cloudflare Worker Proxy & Video Resolver v2.1
  * Provides CORS bypass and metadata/stream extraction for GitHub Pages frontend.
  * Free tier friendly: handles up to 100,000 requests/day at zero cost.
+ *
+ * Endpoints:
+ *   GET /                        → Health check
+ *   GET /api/resolve?url=<url>   → Resolve video metadata + all format streams
+ *   GET /api/proxy?url=<url>&filename=<name>  → Proxy/stream any media URL
+ *   GET /api/audio?url=<url>&filename=<name>  → Proxy audio stream
  */
 
 export default {
@@ -21,8 +27,9 @@ export default {
       return jsonResponse({
         status: "ok",
         name: "Clipper Resolver Worker",
-        version: "1.0.0",
+        version: "2.1.0",
         message: "Send requests to /api/resolve?url=<video-url>",
+        endpoints: ["/api/resolve", "/api/proxy", "/api/audio"],
       });
     }
 
@@ -44,7 +51,7 @@ export default {
       }
     }
 
-    // Direct Media Proxy / Stream (helps force download if remote server blocks direct browser downloads)
+    // Direct Media Proxy / Stream
     if (url.pathname === "/api/proxy") {
       const mediaUrl = url.searchParams.get("url");
       const filename = url.searchParams.get("filename") || "video.mp4";
@@ -53,29 +60,63 @@ export default {
       }
 
       try {
-        const response = await fetch(mediaUrl, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Referer": new URL(mediaUrl).origin,
-          },
-        });
-
-        const newHeaders = new Headers(response.headers);
-        Object.entries(getCorsHeaders()).forEach(([key, val]) => newHeaders.set(key, val));
-        newHeaders.set("Content-Disposition", `attachment; filename="${filename}"`);
-
-        return new Response(response.body, {
-          status: response.status,
-          headers: newHeaders,
-        });
+        return await proxyMedia(mediaUrl, filename, true);
       } catch (err) {
         return jsonResponse({ error: "Stream proxy failed", details: err.message }, 502);
+      }
+    }
+
+    // Audio Stream Proxy
+    if (url.pathname === "/api/audio") {
+      const mediaUrl = url.searchParams.get("url");
+      const filename = url.searchParams.get("filename") || "audio.m4a";
+      if (!mediaUrl) {
+        return jsonResponse({ error: "Missing required query parameter: 'url'" }, 400);
+      }
+
+      try {
+        return await proxyMedia(mediaUrl, filename, true);
+      } catch (err) {
+        return jsonResponse({ error: "Audio proxy failed", details: err.message }, 502);
       }
     }
 
     return jsonResponse({ error: "Endpoint not found" }, 404);
   },
 };
+
+/**
+ * Proxy any media URL through this worker with forced download headers
+ */
+async function proxyMedia(mediaUrl, filename, forceDownload = false) {
+  const response = await fetch(mediaUrl, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Referer": (() => { try { return new URL(mediaUrl).origin; } catch { return "https://www.google.com"; } })(),
+    },
+  });
+
+  const newHeaders = new Headers();
+  const ct = response.headers.get("content-type");
+  if (ct) newHeaders.set("content-type", ct);
+  const cl = response.headers.get("content-length");
+  if (cl) newHeaders.set("content-length", cl);
+  const cr = response.headers.get("content-range");
+  if (cr) newHeaders.set("content-range", cr);
+  const ar = response.headers.get("accept-ranges");
+  if (ar) newHeaders.set("accept-ranges", ar);
+
+  Object.entries(getCorsHeaders()).forEach(([k, v]) => newHeaders.set(k, v));
+
+  if (forceDownload) {
+    newHeaders.set("Content-Disposition", `attachment; filename="${filename}"`);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    headers: newHeaders,
+  });
+}
 
 /**
  * Resolves media links across supported social platforms
@@ -85,14 +126,19 @@ async function resolveMediaUrl(rawUrl) {
   const parsed = new URL(cleanUrl);
   const host = parsed.hostname.toLowerCase();
 
-  // TikTok
-  if (host.includes("tiktok.com")) {
-    return await resolveTikTok(cleanUrl);
-  }
-
   // Instagram
   if (host.includes("instagram.com")) {
     return await resolveInstagram(cleanUrl);
+  }
+
+  // YouTube & Shorts
+  if (host.includes("youtube.com") || host.includes("youtu.be")) {
+    return await resolveYouTube(cleanUrl);
+  }
+
+  // TikTok
+  if (host.includes("tiktok.com")) {
+    return await resolveTikTok(cleanUrl);
   }
 
   // Facebook
@@ -124,38 +170,246 @@ async function resolveMediaUrl(rawUrl) {
     };
   }
 
-  // Fallback to OpenGraph scraper
   return await scrapeOpenGraphMedia(cleanUrl);
 }
 
 /**
- * Resolves TikTok video via TikWM or direct oembed
+ * Resolves Instagram Reel or Post via Embed extraction
+ */
+async function resolveInstagram(url) {
+  const shortcodeMatch = url.match(/\/(?:reel|p|tv)\/([A-Za-z0-9_-]+)/);
+  if (!shortcodeMatch) {
+    throw new Error("Invalid Instagram link. Please paste a reel or post URL (e.g., https://www.instagram.com/reel/CODE/).");
+  }
+
+  const shortcode = shortcodeMatch[1];
+  const embedUrl = `https://www.instagram.com/reel/${shortcode}/embed/captioned/`;
+
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+  };
+
+  const res = await fetch(embedUrl, { headers });
+  if (!res.ok) {
+    throw new Error(`Instagram embed returned HTTP ${res.status}. Reel may be private or restricted.`);
+  }
+
+  const html = await res.text();
+
+  // Extract video_url
+  let videoUrl = null;
+  const idx = html.indexOf("video_url");
+  if (idx !== -1) {
+    const startHttps = html.indexOf("https:", idx);
+    if (startHttps !== -1 && (startHttps - idx) < 50) {
+      let endQuote = html.indexOf('\\"', startHttps);
+      if (endQuote === -1) endQuote = html.indexOf('"', startHttps);
+      if (endQuote > startHttps) {
+        let rawUrl = html.substring(startHttps, endQuote);
+        videoUrl = rawUrl.replace(/\\u0026/g, "&").replace(/\\+/g, "");
+      }
+    }
+  }
+
+  // Fallback regex for video_url
+  if (!videoUrl) {
+    const vm = html.match(/video_url[\"\\':\s]+(https?:[^\"]+?)(?:\"|\\)/i);
+    if (vm && vm[1]) {
+      videoUrl = vm[1].replace(/\\u0026/g, "&").replace(/\\+/g, "");
+    }
+  }
+
+  if (!videoUrl) {
+    throw new Error("Unable to extract video stream from this Instagram Reel. Ensure the account is public.");
+  }
+
+  // Extract caption / title
+  let title = "Instagram Reel";
+  const captionMatch = html.match(/<div class="Caption">([\s\S]*?)<\/div>/i) ||
+                       html.match(/<title>([^<]+)<\/title>/i);
+  if (captionMatch && captionMatch[1]) {
+    title = captionMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    if (title.length > 80) title = title.substring(0, 80) + "...";
+  }
+
+  // Extract thumbnail / poster
+  let thumbnail = null;
+  const displayIdx = html.indexOf("display_url");
+  if (displayIdx !== -1) {
+    const startHttps = html.indexOf("https:", displayIdx);
+    if (startHttps !== -1 && (startHttps - displayIdx) < 50) {
+      let endQuote = html.indexOf('\\"', startHttps);
+      if (endQuote === -1) endQuote = html.indexOf('"', startHttps);
+      if (endQuote > startHttps) {
+        thumbnail = html.substring(startHttps, endQuote).replace(/\\u0026/g, "&").replace(/\\+/g, "");
+      }
+    }
+  }
+
+  return {
+    status: "success",
+    platform: "instagram",
+    id: shortcode,
+    title,
+    author: "Instagram Creator",
+    thumbnailUrl: thumbnail,
+    videoUrl,
+    formats: [
+      { label: "Original Reel (MP4 HD)", url: videoUrl, quality: "1080p/HD", ext: "mp4" },
+      { label: "Standard MP4", url: videoUrl, quality: "720p", ext: "mp4" }
+    ],
+  };
+}
+
+/**
+ * YouTube resolver using Piped API proxies
+ */
+async function resolveYouTube(url) {
+  const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+  if (!match) throw new Error("Invalid YouTube URL. Please paste a valid youtube.com or youtu.be link.");
+
+  const videoId = match[1];
+  const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+  const pipedInstances = [
+    "https://api.piped.private.coffee",
+    "https://pipedapi.kavin.rocks",
+    "https://api.piped.yt",
+    "https://piped.video",
+  ];
+
+  let lastErr = null;
+  for (const inst of pipedInstances) {
+    try {
+      const res = await fetch(`${inst}/streams/${videoId}`, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+      });
+      if (!res.ok) continue;
+      const data = await res.json();
+
+      if (data && (data.videoStreams?.length > 0 || data.audioStreams?.length > 0)) {
+        return buildYouTubeResult(videoId, data, thumbnailUrl);
+      }
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  throw lastErr || new Error("Unable to extract YouTube streams. Try again in a moment.");
+}
+
+function buildYouTubeResult(videoId, data, thumbnailUrl) {
+  const formats = [];
+  const seenQualities = new Set();
+
+  (data.videoStreams || []).forEach(s => {
+    if (s.url) {
+      const qualityStr = s.quality || "360p";
+      const ext = s.format?.toLowerCase() === "webm" ? "webm" : "mp4";
+      const key = `${qualityStr}_${ext}`;
+      if (!seenQualities.has(key)) {
+        seenQualities.add(key);
+        formats.push({
+          label: `${ext.toUpperCase()} ${qualityStr}${s.videoOnly ? " (Video Only)" : ""}`,
+          url: s.url,
+          quality: qualityStr,
+          ext,
+          videoOnly: Boolean(s.videoOnly),
+        });
+      }
+    }
+  });
+
+  if (data.audioStreams && data.audioStreams.length > 0) {
+    const bestAudio = data.audioStreams[0];
+    const audioExt = bestAudio.format?.toLowerCase().includes("webm") ? "webm" : "m4a";
+
+    formats.push({
+      label: "MP3 320kbps (Ultra HQ)",
+      url: bestAudio.url,
+      quality: "320kbps MP3",
+      ext: "mp3",
+      isAudio: true,
+      bitrate: "320k",
+      needsConversion: true,
+    });
+    formats.push({
+      label: "MP3 192kbps (Standard)",
+      url: bestAudio.url,
+      quality: "192kbps MP3",
+      ext: "mp3",
+      isAudio: true,
+      bitrate: "192k",
+      needsConversion: true,
+    });
+    formats.push({
+      label: `Original Audio (${audioExt.toUpperCase()})`,
+      url: bestAudio.url,
+      quality: "Original Audio",
+      ext: audioExt,
+      isAudio: true,
+    });
+  }
+
+  return {
+    status: "success",
+    platform: "youtube",
+    id: videoId,
+    title: data.title || "YouTube Video",
+    author: data.uploader || "YouTube Creator",
+    authorHandle: data.uploaderUrl ? data.uploaderUrl.split("/").pop() : null,
+    thumbnailUrl: data.thumbnailUrl || thumbnailUrl,
+    duration: data.duration,
+    videoUrl: formats[0]?.url || null,
+    audioUrl: data.audioStreams?.[0]?.url || null,
+    formats,
+    source: "piped",
+  };
+}
+
+/**
+ * Resolves TikTok video via TikWM
  */
 async function resolveTikTok(url) {
-  const apiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}`;
+  const apiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(url)}&hd=1`;
   const res = await fetch(apiUrl, {
-    headers: { "User-Agent": "Mozilla/5.0 (compatible; ClipperBot/1.0)" }
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept": "application/json, text/plain, */*",
+    }
   });
   const data = await res.json();
 
   if (data && data.code === 0 && data.data) {
     const d = data.data;
+    const formats = [];
+
+    if (d.hdplay) {
+      formats.push({ label: "HD No Watermark (1080p)", url: d.hdplay, quality: "1080p HD", ext: "mp4" });
+    }
+    if (d.play && d.play !== d.hdplay) {
+      formats.push({ label: "Standard No Watermark (720p)", url: d.play, quality: "720p", ext: "mp4" });
+    }
+    if (d.wmplay) {
+      formats.push({ label: "With Watermark", url: d.wmplay, quality: "720p WM", ext: "mp4" });
+    }
+    if (d.music) {
+      formats.push({ label: "MP3 Audio (320kbps)", url: d.music, quality: "320kbps MP3", ext: "mp3", isAudio: true, bitrate: "320k" });
+    }
+
     return {
       status: "success",
       platform: "tiktok",
       id: d.id,
       title: d.title || "TikTok Video",
-      author: d.author ? d.author.nickname : "TikTok Creator",
-      thumbnailUrl: d.cover || d.origin_cover,
+      author: d.author ? (d.author.nickname || d.author.unique_id) : "TikTok Creator",
+      thumbnailUrl: d.origin_cover || d.cover,
       duration: d.duration,
-      videoUrl: d.play, // Watermark-free
-      hdVideoUrl: d.hdplay || d.play,
+      videoUrl: d.hdplay || d.play,
       audioUrl: d.music || null,
-      formats: [
-        { label: "HD No Watermark", url: d.hdplay || d.play, quality: "1080p/HD" },
-        { label: "Standard MP4", url: d.play, quality: "720p" },
-        ...(d.music ? [{ label: "Audio Only (MP3)", url: d.music, quality: "audio" }] : [])
-      ]
+      formats,
     };
   }
 
@@ -163,87 +417,17 @@ async function resolveTikTok(url) {
 }
 
 /**
- * Resolves Instagram Reel or Post via OpenGraph and GraphQL inspection
- */
-async function resolveInstagram(url) {
-  // Normalize URL to /reel/ or /p/
-  let fetchUrl = url;
-  if (!fetchUrl.endsWith("/")) fetchUrl += "/";
-
-  const headers = {
-    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Sec-Fetch-Mode": "navigate",
-  };
-
-  const res = await fetch(fetchUrl, { headers });
-  const html = await res.text();
-
-  // Extract og:video
-  const videoMatch = html.match(/<meta\s+property="og:video(?::secure_url)?"\s+content="([^"]+)"/i) ||
-                     html.match(/<meta\s+content="([^"]+)"\s+property="og:video(?::secure_url)?"/i);
-  
-  const titleMatch = html.match(/<meta\s+property="og:title"\s+content="([^"]+)"/i) ||
-                     html.match(/<meta\s+content="([^"]+)"\s+property="og:title"/i);
-                     
-  const imageMatch = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) ||
-                     html.match(/<meta\s+content="([^"]+)"\s+property="og:image"/i);
-
-  if (videoMatch && videoMatch[1]) {
-    const rawVideoUrl = decodeHtml(videoMatch[1]);
-    const title = titleMatch ? decodeHtml(titleMatch[1]) : "Instagram Reel";
-    const thumbnail = imageMatch ? decodeHtml(imageMatch[1]) : null;
-
-    return {
-      status: "success",
-      platform: "instagram",
-      title: title,
-      videoUrl: rawVideoUrl,
-      thumbnailUrl: thumbnail,
-      formats: [
-        { label: "Original Reel (MP4)", url: rawVideoUrl, quality: "HD" }
-      ]
-    };
-  }
-
-  // Check JSON scripts in page
-  const jsonMatch = html.match(/<script\s+type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i);
-  if (jsonMatch && jsonMatch[1]) {
-    try {
-      const parsed = JSON.parse(jsonMatch[1]);
-      if (parsed.video && parsed.video.contentUrl) {
-        return {
-          status: "success",
-          platform: "instagram",
-          title: parsed.caption || parsed.name || "Instagram Reel",
-          videoUrl: parsed.video.contentUrl,
-          thumbnailUrl: parsed.video.thumbnailUrl || null,
-          formats: [
-            { label: "Original Reel (MP4)", url: parsed.video.contentUrl, quality: "HD" }
-          ]
-        };
-      }
-    } catch (_) {}
-  }
-
-  throw new Error("Instagram restricted public access for this reel. Make sure the account is public, or connect a private Cobalt instance.");
-}
-
-/**
  * Resolves Facebook Reel or Share link
  */
 async function resolveFacebook(url) {
   const headers = {
-    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
   };
 
   const res = await fetch(url, { headers, redirect: "follow" });
   const html = await res.text();
 
-  // Extract HD/SD video stream URLs
   const hdMatch = html.match(/browser_native_hd_url":"([^"]+)"/) || html.match(/"playable_url_quality_hd":"([^"]+)"/);
   const sdMatch = html.match(/browser_native_sd_url":"([^"]+)"/) || html.match(/"playable_url":"([^"]+)"/);
   const ogVideo = html.match(/<meta\s+(?:property|name)="og:video(?::secure_url)?"\s+content="([^"]+)"/i);
@@ -259,8 +443,8 @@ async function resolveFacebook(url) {
   const targetVideoUrl = hdUrl || sdUrl || ogUrl;
   if (targetVideoUrl) {
     const formats = [];
-    if (hdUrl) formats.push({ label: "HD MP4 Video", url: hdUrl, quality: "1080p HD", ext: "mp4" });
-    if (sdUrl && sdUrl !== hdUrl) formats.push({ label: "Standard MP4", url: sdUrl, quality: "720p", ext: "mp4" });
+    if (hdUrl) formats.push({ label: "HD MP4 (1080p)", url: hdUrl, quality: "1080p HD", ext: "mp4" });
+    if (sdUrl && sdUrl !== hdUrl) formats.push({ label: "Standard MP4 (720p)", url: sdUrl, quality: "720p", ext: "mp4" });
     if (formats.length === 0 && targetVideoUrl) formats.push({ label: "MP4 Video", url: targetVideoUrl, quality: "Standard", ext: "mp4" });
 
     return {
@@ -270,39 +454,42 @@ async function resolveFacebook(url) {
       author: "Facebook Creator",
       thumbnailUrl: thumbMatch ? cleanStream(thumbMatch[1]) : null,
       videoUrl: targetVideoUrl,
-      formats: formats
+      formats,
     };
   }
 
-  throw new Error("Unable to extract video stream from Facebook link. The post may be private or restricted.");
+  throw new Error("Unable to extract video from Facebook. The post may be private or restricted.");
 }
 
 /**
  * Resolves Twitter / X video using fxtwitter API
  */
 async function resolveTwitter(url) {
-  // Extract status id
   const idMatch = url.match(/\/status\/(\d+)/);
-  if (!idMatch) {
-    throw new Error("Invalid Twitter / X status URL format");
-  }
+  if (!idMatch) throw new Error("Invalid Twitter / X status URL format");
 
   const tweetId = idMatch[1];
-  const fxRes = await fetch(`https://api.fxtwitter.com/status/${tweetId}`);
+  const fxRes = await fetch(`https://api.fxtwitter.com/status/${tweetId}`, {
+    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+  });
   const data = await fxRes.json();
 
   if (data && data.tweet && data.tweet.media && data.tweet.media.videos) {
     const videos = data.tweet.media.videos;
     const bestVideo = videos[0];
 
-    const formats = (bestVideo.variants || []).map((v, i) => ({
-      label: `MP4 (${v.content_type || "video"})`,
-      url: v.url,
-      quality: v.url.includes("1080") ? "1080p" : v.url.includes("720") ? "720p" : "standard"
-    }));
+    const formats = (bestVideo.variants || [])
+      .filter(v => v.url)
+      .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))
+      .map(v => ({
+        label: `MP4 ${v.url.includes("1080") ? "1080p" : v.url.includes("720") ? "720p" : v.url.includes("480") ? "480p" : "360p"}`,
+        url: v.url,
+        quality: v.url.includes("1080") ? "1080p" : v.url.includes("720") ? "720p" : v.url.includes("480") ? "480p" : "360p",
+        ext: "mp4",
+      }));
 
     if (formats.length === 0 && bestVideo.url) {
-      formats.push({ label: "MP4 Video", url: bestVideo.url, quality: "HD" });
+      formats.push({ label: "MP4 Video", url: bestVideo.url, quality: "HD", ext: "mp4" });
     }
 
     return {
@@ -312,7 +499,7 @@ async function resolveTwitter(url) {
       author: data.tweet.author ? `@${data.tweet.author.screen_name}` : "X User",
       thumbnailUrl: bestVideo.thumbnail_url || null,
       videoUrl: bestVideo.url,
-      formats: formats
+      formats,
     };
   }
 
@@ -320,17 +507,18 @@ async function resolveTwitter(url) {
 }
 
 /**
- * Scrapes Reddit video via post JSON
+ * Scrapes Reddit video via post JSON API
  */
 async function resolveReddit(url) {
   let jsonUrl = url.split("?")[0];
-  if (!jsonUrl.endsWith(".json")) {
-    if (jsonUrl.endsWith("/")) jsonUrl = jsonUrl.slice(0, -1);
-    jsonUrl += ".json";
-  }
+  if (jsonUrl.endsWith("/")) jsonUrl = jsonUrl.slice(0, -1);
+  jsonUrl += ".json";
 
   const res = await fetch(jsonUrl, {
-    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Clipper/1.0" }
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+      "Accept": "application/json",
+    }
   });
   const data = await res.json();
 
@@ -339,6 +527,14 @@ async function resolveReddit(url) {
 
   const media = post.secure_media?.reddit_video || post.media?.reddit_video;
   if (media && media.fallback_url) {
+    const baseUrl = media.fallback_url.split("DASH_")[0];
+    const formats = [];
+
+    if (media.height >= 1080) formats.push({ label: "MP4 1080p", url: `${baseUrl}DASH_1080.mp4`, quality: "1080p", ext: "mp4" });
+    if (media.height >= 720) formats.push({ label: "MP4 720p", url: `${baseUrl}DASH_720.mp4`, quality: "720p", ext: "mp4" });
+    if (media.height >= 480) formats.push({ label: "MP4 480p", url: `${baseUrl}DASH_480.mp4`, quality: "480p", ext: "mp4" });
+    formats.push({ label: `MP4 ${media.height}p (Original)`, url: media.fallback_url, quality: `${media.height}p`, ext: "mp4" });
+
     return {
       status: "success",
       platform: "reddit",
@@ -346,9 +542,7 @@ async function resolveReddit(url) {
       author: `u/${post.author}`,
       thumbnailUrl: post.thumbnail && post.thumbnail.startsWith("http") ? post.thumbnail : null,
       videoUrl: media.fallback_url,
-      formats: [
-        { label: `Reddit MP4 (${media.height}p)`, url: media.fallback_url, quality: `${media.height}p` }
-      ]
+      formats,
     };
   }
 
@@ -361,17 +555,17 @@ async function resolveReddit(url) {
 async function scrapeOpenGraphMedia(url) {
   const res = await fetch(url, {
     headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     }
   });
   const html = await res.text();
 
   const videoMatch = html.match(/<meta\s+(?:property|name)="og:video(?::secure_url)?"\s+content="([^"]+)"/i) ||
                      html.match(/<meta\s+content="([^"]+)"\s+(?:property|name)="og:video(?::secure_url)?"/i);
-  
+
   const titleMatch = html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i) ||
                      html.match(/<title>([^<]+)<\/title>/i);
-                     
+
   const imageMatch = html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i);
 
   if (videoMatch && videoMatch[1]) {
@@ -381,12 +575,12 @@ async function scrapeOpenGraphMedia(url) {
       platform: "generic",
       title: titleMatch ? decodeHtml(titleMatch[1]) : "Web Video",
       thumbnailUrl: imageMatch ? decodeHtml(imageMatch[1]) : null,
-      videoUrl: videoUrl,
-      formats: [{ label: "Original Video", url: videoUrl, quality: "Original" }]
+      videoUrl,
+      formats: [{ label: "Original Video", url: videoUrl, quality: "original", ext: "mp4" }],
     };
   }
 
-  throw new Error("Unable to detect video stream from link. The page may require login or has anti-bot restrictions.");
+  throw new Error("Unable to detect video stream from this link. The page may require login or has anti-bot restrictions.");
 }
 
 function decodeHtml(str) {
@@ -395,7 +589,8 @@ function decodeHtml(str) {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'");
+    .replace(/&#39;/g, "'")
+    .replace(/&#x2F;/g, "/");
 }
 
 function getCorsHeaders() {
@@ -416,4 +611,3 @@ function jsonResponse(data, status = 200) {
     },
   });
 }
-

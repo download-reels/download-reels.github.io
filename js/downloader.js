@@ -5,8 +5,8 @@
 class DownloaderEngine {
   constructor() {
     this.defaultSettings = {
-      // User can point to their own Cloudflare Worker or Python backend
-      apiUrl: localStorage.getItem("clipper_api_url") || "",
+      // Default to live Cloudflare Worker proxy or user-configured endpoint
+      apiUrl: localStorage.getItem("clipper_api_url") || "https://clipper-resolver.download-reels.workers.dev",
       apiMode: localStorage.getItem("clipper_api_mode") || "smart", // "smart", "worker", "custom"
       autoDownload: localStorage.getItem("clipper_auto_download") === "true",
       maxRetries: 2

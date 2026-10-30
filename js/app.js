@@ -294,7 +294,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (media.formats && media.formats.length > 0) {
       media.formats.forEach((fmt, index) => {
         const btn = document.createElement("button");
-        const isAudio = fmt.quality === "audio" || fmt.ext === "mp3";
+        const isAudio = fmt.quality === "audio" || fmt.ext === "mp3" || Boolean(fmt.isAudio);
         const isSelected = index === 0;
 
         btn.className = `group relative inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border transition-all cursor-pointer ${
@@ -341,7 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Audio download button visibility
-    const hasAudio = media.audioUrl || (media.formats && media.formats.some(f => f.quality === "audio" || f.ext === "mp3"));
+    const hasAudio = media.audioUrl || (media.formats && media.formats.some(f => f.quality === "audio" || f.ext === "mp3" || f.isAudio));
     audioDownloadBtn.classList.toggle("hidden", !hasAudio);
 
     // Show result card with smooth entrance
@@ -360,11 +360,15 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateDownloadButtonLabel(fmt) {
-    const isAudio = fmt.quality === "audio" || fmt.ext === "mp3";
+    const isAudio = fmt.quality === "audio" || fmt.ext === "mp3" || Boolean(fmt.isAudio);
     const qualityLabel = fmt.quality && fmt.quality !== "Standard" ? fmt.quality : (fmt.ext ? fmt.ext.toUpperCase() : "MP4");
     const span = primaryDownloadBtn.querySelector("span");
     if (span) {
-      span.textContent = isAudio ? "Download MP3 Audio" : `Download ${qualityLabel}`;
+      if (fmt.needsConversion && isAudio) {
+        span.textContent = `Convert & Download ${fmt.quality || "320kbps MP3"}`;
+      } else {
+        span.textContent = isAudio ? `Download ${fmt.quality || "MP3 Audio"}` : `Download ${qualityLabel}`;
+      }
     }
   }
 
@@ -374,6 +378,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function triggerPrimaryDownload() {
     if (!currentMedia || !selectedFormat) return;
+
+    // If client-side conversion studio is required (e.g. 320kbps MP3 from YouTube audio stream)
+    if (selectedFormat.needsConversion && convertModal) {
+      convertModal.classList.remove("hidden");
+      convertProgressGroup.classList.add("hidden");
+      startConvertBtn.disabled = false;
+      if (convertFormatSelect) convertFormatSelect.value = selectedFormat.ext || "mp3";
+      if (convertBitrateSelect && selectedFormat.bitrate) convertBitrateSelect.value = selectedFormat.bitrate;
+      showToast("Ready: Click 'Start Conversion' to encode client-side 320kbps MP3.", "info");
+      return;
+    }
 
     const downloadUrl = selectedFormat.url || currentMedia.videoUrl;
     const cleanTitle = (currentMedia.title || "video")
@@ -623,8 +638,16 @@ document.addEventListener("DOMContentLoaded", () => {
   // -------------------------------------------------------------
 
   function initSettings() {
-    apiEndpointInput.value = localStorage.getItem("clipper_api_url") || "";
+    apiEndpointInput.value = localStorage.getItem("clipper_api_url") || "https://clipper-resolver.download-reels.workers.dev";
     autoDownloadToggle.checked = localStorage.getItem("clipper_auto_download") === "true";
+  }
+
+  const useDefaultWorkerBtn = document.getElementById("useDefaultWorkerBtn");
+  if (useDefaultWorkerBtn) {
+    useDefaultWorkerBtn.addEventListener("click", () => {
+      apiEndpointInput.value = "https://clipper-resolver.download-reels.workers.dev";
+      showToast("Default Cloudflare Worker endpoint filled!");
+    });
   }
 
   openSettingsBtn.addEventListener("click", () => {
