@@ -32,32 +32,40 @@ class DownloaderEngine {
 
     onProgress({ stage: "detecting", message: `Detected ${platform ? platform.name : "URL"}...` });
 
-    // 1. Direct Video Link Strategy
+    // 1. Direct Video Link Strategy (instant)
     if (platform && platform.id === "direct") {
       onProgress({ stage: "resolving", message: "Preparing direct media stream..." });
       return this.resolveDirectVideo(cleanUrl);
     }
 
-    // 2. Custom Backend / Worker Strategy (if user configured one)
-    if (this.defaultSettings.apiUrl) {
-      try {
-        onProgress({ stage: "connecting", message: "Connecting to configured backend..." });
-        return await this.resolveViaBackend(cleanUrl, this.defaultSettings.apiUrl);
-      } catch (backendErr) {
-        console.warn("Configured backend failed, falling back to smart client resolvers:", backendErr);
-      }
-    }
-
-    // 3. Platform-Specific High-Speed Resolvers
+    // 2. High-Speed Client Resolvers (TikTok operates best client-side with CORS enabled)
     if (platform && platform.id === "tiktok") {
       try {
         onProgress({ stage: "resolving", message: "Extracting TikTok HD stream (No Watermark)..." });
         return await this.resolveTikTok(cleanUrl);
       } catch (err) {
-        console.warn("TikWM failed, trying fallback...", err);
+        console.warn("Client TikWM failed, trying backend fallback...", err);
       }
     }
 
+    // 3. Custom Backend / Worker Strategy (for Instagram, Facebook, Reddit, YouTube)
+    if (this.defaultSettings.apiUrl) {
+      try {
+        onProgress({ stage: "connecting", message: "Connecting to media resolver engine..." });
+        return await this.resolveViaBackend(cleanUrl, this.defaultSettings.apiUrl);
+      } catch (backendErr) {
+        console.warn("Backend resolver returned error, trying client fallbacks:", backendErr);
+        if (backendErr.message && (
+          backendErr.message.includes("does not contain any video") ||
+          backendErr.message.includes("private") ||
+          backendErr.message.includes("restricted")
+        )) {
+          throw backendErr;
+        }
+      }
+    }
+
+    // 4. Platform-Specific High-Speed Client Fallbacks
     if (platform && platform.id === "twitter") {
       try {
         onProgress({ stage: "resolving", message: "Extracting X/Twitter video..." });
@@ -66,7 +74,7 @@ class DownloaderEngine {
         if (err.message && (err.message.includes("does not contain any video") || err.message.includes("No video found"))) {
           throw err;
         }
-        console.warn("Twitter client resolver failed, trying worker fallback...", err);
+        console.warn("Twitter client resolver failed...", err);
       }
     }
 
@@ -75,11 +83,11 @@ class DownloaderEngine {
         onProgress({ stage: "resolving", message: "Extracting YouTube stream..." });
         return await this.resolveYouTube(cleanUrl);
       } catch (err) {
-        console.warn("YouTube client resolver failed, trying fallback...", err);
+        console.warn("YouTube client resolver failed...", err);
       }
     }
 
-    // 4. No client-side resolver available — show platform-specific guidance
+    // 5. No resolver succeeded — show clear guidance
     const platformId = platform ? platform.id : "unknown";
     const backendMsg = this.backendRequiredMessages[platformId];
     if (backendMsg) {
@@ -87,7 +95,7 @@ class DownloaderEngine {
     }
 
     throw new Error(
-      `No client-side resolver available for this platform. Configure a backend proxy in Settings ⚙️ or check that the URL is a valid public video link.`
+      `Unable to extract video from this link. Please verify the post is public and contains active video media.`
     );
   }
 

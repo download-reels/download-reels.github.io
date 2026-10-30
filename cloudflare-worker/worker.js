@@ -177,7 +177,7 @@ async function resolveMediaUrl(rawUrl) {
  * Resolves Instagram Reel or Post via Embed extraction
  */
 async function resolveInstagram(url) {
-  const shortcodeMatch = url.match(/\/(?:reel|p|tv)\/([A-Za-z0-9_-]+)/);
+  const shortcodeMatch = url.match(/\/(?:reel|reels|p|tv|share\/reel)\/([A-Za-z0-9_-]+)/);
   if (!shortcodeMatch) {
     throw new Error("Invalid Instagram link. Please paste a reel or post URL (e.g., https://www.instagram.com/reel/CODE/).");
   }
@@ -275,19 +275,26 @@ async function resolveYouTube(url) {
 
   const pipedInstances = [
     "https://api.piped.private.coffee",
-    "https://pipedapi.kavin.rocks",
-    "https://api.piped.yt",
-    "https://piped.video",
+    "https://pipedapi.tokhmi.xyz",
+    "https://api.piped.yt"
   ];
 
   let lastErr = null;
   for (const inst of pipedInstances) {
     try {
       const res = await fetch(`${inst}/streams/${videoId}`, {
-        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+          "Accept": "application/json"
+        }
       });
       if (!res.ok) continue;
-      const data = await res.json();
+
+      const ct = res.headers.get("content-type") || "";
+      if (!ct.includes("json")) continue;
+
+      const data = await res.json().catch(() => null);
+      if (!data || data.error) continue;
 
       if (data && (data.videoStreams?.length > 0 || data.audioStreams?.length > 0)) {
         return buildYouTubeResult(videoId, data, thumbnailUrl);
@@ -297,7 +304,7 @@ async function resolveYouTube(url) {
     }
   }
 
-  throw lastErr || new Error("Unable to extract YouTube streams. Try again in a moment.");
+  throw lastErr || new Error("Unable to extract YouTube streams. Please verify the video is public.");
 }
 
 function buildYouTubeResult(videoId, data, thumbnailUrl) {
@@ -380,7 +387,7 @@ async function resolveTikTok(url) {
       "Accept": "application/json, text/plain, */*",
     }
   });
-  const data = await res.json();
+  const data = await res.json().catch(err => ({ code: -99, msg: err.message }));
 
   if (data && data.code === 0 && data.data) {
     const d = data.data;
@@ -413,7 +420,7 @@ async function resolveTikTok(url) {
     };
   }
 
-  throw new Error("Unable to extract TikTok video. Please ensure the link is public.");
+  throw new Error(`TikWM response: code=${data?.code}, msg=${data?.msg || "unknown"}`);
 }
 
 /**
@@ -548,9 +555,19 @@ async function resolveTwitter(url) {
  * Scrapes Reddit video via post JSON API
  */
 async function resolveReddit(url) {
-  let jsonUrl = url.split("?")[0];
+  let targetUrl = url;
+  if (url.includes("v.redd.it")) {
+    try {
+      const headRes = await fetch(url, { redirect: "follow", headers: { "User-Agent": "Mozilla/5.0" } });
+      if (headRes.url && !headRes.url.includes("v.redd.it")) {
+        targetUrl = headRes.url;
+      }
+    } catch (_) {}
+  }
+
+  let jsonUrl = targetUrl.split("?")[0];
   if (jsonUrl.endsWith("/")) jsonUrl = jsonUrl.slice(0, -1);
-  jsonUrl += ".json";
+  if (!jsonUrl.endsWith(".json")) jsonUrl += ".json";
 
   const res = await fetch(jsonUrl, {
     headers: {
@@ -558,6 +575,7 @@ async function resolveReddit(url) {
       "Accept": "application/json",
     }
   });
+  if (!res.ok) throw new Error("Could not fetch Reddit post data.");
   const data = await res.json();
 
   const post = data[0]?.data?.children[0]?.data;
