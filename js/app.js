@@ -60,14 +60,22 @@ document.addEventListener("DOMContentLoaded", () => {
   let currentMedia = null;
   let selectedFormat = null;
   let qrcodeInstance = null;
+  let isResolving = false;
+  let lastResolvedUrl = "";
+  let autoResolveTimeout = null;
 
   // Initialize
   initSettings();
   renderHistory();
   setupSamplePills();
+  
+  // Auto-focus input on page load
+  setTimeout(() => {
+    if (urlInput) urlInput.focus();
+  }, 100);
 
   // -------------------------------------------------------------
-  // Input & Platform Detection Events
+  // Input & Auto-Resolve Events (Zero Extra Clicks)
   // -------------------------------------------------------------
 
   function handleInputChange() {
@@ -89,6 +97,20 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       resetPlatformBadge();
     }
+
+    // Auto-resolve if a full URL was pasted/typed
+    if (isValidVideoUrl(val) && val !== lastResolvedUrl && !isResolving) {
+      clearTimeout(autoResolveTimeout);
+      autoResolveTimeout = setTimeout(() => {
+        startResolve();
+      }, 350);
+    }
+  }
+
+  function isValidVideoUrl(text) {
+    if (!text || typeof text !== "string") return false;
+    const trimmed = text.trim();
+    return /^https?:\/\/.+/i.test(trimmed) && trimmed.length > 12;
   }
 
   function resetPlatformBadge() {
@@ -100,12 +122,58 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   urlInput.addEventListener("input", handleInputChange);
-  urlInput.addEventListener("paste", () => setTimeout(handleInputChange, 50));
+  
+  // Instant Auto-Resolve on input paste
+  urlInput.addEventListener("paste", (e) => {
+    const text = (e.clipboardData || window.clipboardData)?.getData("text") || "";
+    if (text && isValidVideoUrl(text.trim())) {
+      e.preventDefault();
+      urlInput.value = text.trim();
+      handleInputChange();
+      showToast("Link detected — resolving stream...", "info");
+      startResolve();
+    }
+  });
+
+  // Global window paste listener (paste anywhere on screen to auto-resolve)
+  window.addEventListener("paste", (e) => {
+    if (document.activeElement && document.activeElement.tagName === "INPUT" && document.activeElement !== urlInput) {
+      return; // User is typing inside settings modal
+    }
+    const text = (e.clipboardData || window.clipboardData)?.getData("text") || "";
+    if (text && isValidVideoUrl(text.trim())) {
+      urlInput.value = text.trim();
+      urlInput.focus();
+      handleInputChange();
+      showToast("Link pasted — extracting media...", "info");
+      startResolve();
+    }
+  });
   
   urlInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       startResolve();
+    }
+  });
+
+  // Global Escape key shortcut
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (!settingsModal.classList.contains("hidden")) {
+        settingsModal.classList.add("hidden");
+      } else if (!qrModal.classList.contains("hidden")) {
+        qrModal.classList.add("hidden");
+      } else if (!platformsModal.classList.contains("hidden")) {
+        platformsModal.classList.add("hidden");
+      } else if (urlInput.value) {
+        urlInput.value = "";
+        handleInputChange();
+        resultCard.classList.add("hidden");
+        loadingState.classList.add("hidden");
+        hideError();
+        urlInput.focus();
+      }
     }
   });
 
@@ -121,11 +189,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (text) {
         urlInput.value = text.trim();
         handleInputChange();
+        showToast("Pasted from clipboard — resolving...", "info");
         startResolve();
       }
     } catch (err) {
       urlInput.focus();
-      showToast("Please allow clipboard permission or paste manually.");
+      showToast("Please allow clipboard permission or paste manually.", "error");
     }
   });
 
@@ -143,11 +212,15 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    if (isResolving) return;
+
+    isResolving = true;
+    lastResolvedUrl = url;
     hideError();
     resultCard.classList.add("hidden");
     loadingState.classList.remove("hidden");
     fetchBtn.disabled = true;
-    progressBar.style.width = "30%";
+    progressBar.style.width = "35%";
 
     try {
       const media = await window.downloaderEngine.resolve(url, (status) => {
@@ -160,13 +233,16 @@ document.addEventListener("DOMContentLoaded", () => {
       setTimeout(() => {
         loadingState.classList.add("hidden");
         fetchBtn.disabled = false;
+        isResolving = false;
         displayResult(media, url);
-      }, 400);
+      }, 300);
 
     } catch (err) {
       loadingState.classList.add("hidden");
       fetchBtn.disabled = false;
+      isResolving = false;
       showError(err.message || "Failed to extract video. Make sure the link is public.");
+      showToast(err.message || "Extraction failed. Check link or settings.", "error");
     }
   }
 
@@ -182,10 +258,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const platform = detectPlatform(originalUrl) || { name: media.platform || "Video", color: "#a1a1aa" };
     resultPlatformBadge.textContent = platform.name;
 
-    // Video Player Preview
+    // Instant Preview Frame Loading
     if (media.videoUrl) {
-      videoPlayer.src = media.videoUrl;
+      videoPlayer.preload = "metadata";
       videoPlayer.poster = media.thumbnailUrl || "";
+      videoPlayer.src = media.videoUrl;
+      videoPlayer.load(); // Forces immediate preview frame load
       videoPlayer.classList.remove("hidden");
       videoThumbnail.classList.add("hidden");
     } else if (media.thumbnailUrl) {
@@ -194,41 +272,66 @@ document.addEventListener("DOMContentLoaded", () => {
       videoPlayer.classList.add("hidden");
     }
 
-    // Populate format buttons
+    // Populate format buttons with rich badges & quality choices
     formatSelector.innerHTML = "";
     if (media.formats && media.formats.length > 0) {
       media.formats.forEach((fmt, index) => {
         const btn = document.createElement("button");
-        btn.className = `h-7 px-2.5 rounded-md text-xs font-medium border transition-colors ${
-          index === 0
-            ? "border-zinc-700 bg-zinc-100 text-zinc-900"
+        const isAudio = fmt.quality === "audio" || fmt.ext === "mp3";
+        const isSelected = index === 0;
+
+        btn.className = `group relative inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border transition-all cursor-pointer ${
+          isSelected
+            ? "border-primary bg-primary text-primary-foreground shadow-sm"
             : "border-border bg-secondary text-foreground hover:bg-accent"
         }`;
-        btn.textContent = fmt.label || `${fmt.quality || "Standard"} (${fmt.ext || "mp4"})`;
+
+        // Format label & size tag
+        const label = fmt.label || `${fmt.quality || "Standard"} (${fmt.ext ? fmt.ext.toUpperCase() : "MP4"})`;
+        const sizeTag = fmt.size ? `<span class="opacity-70 font-mono text-[10px]">(${formatBytes(fmt.size)})</span>` : "";
+
+        btn.innerHTML = `
+          <span>${label}</span>
+          ${sizeTag}
+        `;
         
         btn.addEventListener("click", () => {
           selectedFormat = fmt;
           Array.from(formatSelector.children).forEach(b => {
-            b.className = "h-7 px-2.5 rounded-md text-xs font-medium border border-border bg-secondary text-foreground hover:bg-accent transition-colors";
+            b.className = "group relative inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border border-border bg-secondary text-foreground hover:bg-accent transition-all cursor-pointer";
           });
-          btn.className = "h-7 px-2.5 rounded-md text-xs font-medium border border-zinc-700 bg-zinc-100 text-zinc-900 transition-colors";
+          btn.className = "group relative inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border border-primary bg-primary text-primary-foreground shadow-sm transition-all cursor-pointer";
           
-          if (fmt.url && fmt.ext !== "mp3") {
+          // Switch video player stream immediately if video format
+          if (fmt.url && !isAudio) {
             videoPlayer.src = fmt.url;
+            videoPlayer.load();
+            videoPlayer.classList.remove("hidden");
+            videoThumbnail.classList.add("hidden");
           }
+
+          // Update primary button text
+          updateDownloadButtonLabel(fmt);
         });
 
         formatSelector.appendChild(btn);
       });
     }
 
+    // Update primary download button label
+    if (selectedFormat) {
+      updateDownloadButtonLabel(selectedFormat);
+    }
+
     // Audio download button visibility
     const hasAudio = media.audioUrl || (media.formats && media.formats.some(f => f.quality === "audio" || f.ext === "mp3"));
     audioDownloadBtn.classList.toggle("hidden", !hasAudio);
 
-    // Show result card
+    // Show result card with smooth entrance
     resultCard.classList.remove("hidden");
     resultCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    showToast("Preview loaded! Ready to download.", "success");
 
     // Save to history
     saveToHistory(media, originalUrl);
@@ -236,6 +339,15 @@ document.addEventListener("DOMContentLoaded", () => {
     // Auto-download check
     if (window.downloaderEngine.defaultSettings.autoDownload && selectedFormat) {
       triggerPrimaryDownload();
+    }
+  }
+
+  function updateDownloadButtonLabel(fmt) {
+    const isAudio = fmt.quality === "audio" || fmt.ext === "mp3";
+    const qualityLabel = fmt.quality && fmt.quality !== "Standard" ? fmt.quality : (fmt.ext ? fmt.ext.toUpperCase() : "MP4");
+    const span = primaryDownloadBtn.querySelector("span");
+    if (span) {
+      span.textContent = isAudio ? "Download MP3 Audio" : `Download ${qualityLabel}`;
     }
   }
 
@@ -506,20 +618,50 @@ document.addEventListener("DOMContentLoaded", () => {
     errorMessage.textContent = "";
   }
 
-  function showToast(msg) {
+  function showToast(msg, type = "success") {
+    let container = document.getElementById("toastContainer");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "toastContainer";
+      container.className = "fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none";
+      document.body.appendChild(container);
+    }
+
     const toast = document.createElement("div");
-    toast.className = "fixed bottom-5 right-5 z-50 px-3 py-2 rounded-md bg-card border border-border text-foreground text-xs shadow-lg flex items-center gap-2 transform transition-all duration-200";
+    toast.className = "pointer-events-auto flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border border-border bg-card/95 backdrop-blur text-foreground text-xs shadow-xl transform transition-all duration-300 translate-y-3 opacity-0 max-w-sm";
+    
+    let icon = `<svg class="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+    if (type === "info") {
+      icon = `<svg class="w-4 h-4 text-sky-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+    } else if (type === "error") {
+      icon = `<svg class="w-4 h-4 text-rose-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+    }
+
     toast.innerHTML = `
-      <svg class="w-3.5 h-3.5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-      </svg>
-      <span>${msg}</span>
+      ${icon}
+      <span class="font-medium text-foreground leading-snug">${msg}</span>
     `;
-    document.body.appendChild(toast);
+
+    container.appendChild(toast);
+
+    // Slide up and fade in
+    requestAnimationFrame(() => {
+      toast.classList.remove("translate-y-3", "opacity-0");
+    });
+
+    // Auto dismiss after 2.8s
     setTimeout(() => {
-      toast.classList.add("opacity-0", "translate-y-1");
-      setTimeout(() => toast.remove(), 200);
-    }, 2500);
+      toast.classList.add("translate-y-2", "opacity-0");
+      setTimeout(() => toast.remove(), 300);
+    }, 2800);
+  }
+
+  function formatBytes(bytes) {
+    if (!bytes || isNaN(bytes)) return "";
+    const b = parseInt(bytes, 10);
+    if (b < 1024) return `${b} B`;
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+    return `${(b / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   function timeAgo(timestamp) {
