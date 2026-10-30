@@ -145,7 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
       e.preventDefault();
       urlInput.value = text.trim();
       handleInputChange();
-      showToast("Link detected — resolving stream...", "info");
+      showToast(window.i18n ? window.i18n.t("toast.linkDetected") : "Link detected — resolving stream...", "info");
       startResolve();
     }
   });
@@ -160,7 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
       urlInput.value = text.trim();
       urlInput.focus();
       handleInputChange();
-      showToast("Link pasted — extracting media...", "info");
+      showToast(window.i18n ? window.i18n.t("toast.linkPasted") : "Link pasted — extracting media...", "info");
       startResolve();
     }
   });
@@ -206,7 +206,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (text) {
         urlInput.value = text.trim();
         handleInputChange();
-        showToast("Pasted from clipboard — resolving...", "info");
+        showToast(window.i18n ? window.i18n.t("toast.clipboardPasted") : "Pasted from clipboard — resolving...", "info");
         startResolve();
       }
     } catch (err) {
@@ -348,7 +348,7 @@ document.addEventListener("DOMContentLoaded", () => {
     resultCard.classList.remove("hidden");
     resultCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-    showToast("Preview loaded! Ready to download.", "success");
+    showToast(window.i18n ? window.i18n.t("toast.previewLoaded") : "Preview loaded! Ready to download.", "success");
 
     // Save to history
     saveToHistory(media, originalUrl);
@@ -436,7 +436,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (audioUrl) {
       const cleanTitle = (currentMedia.title || "audio").replace(/[^a-zA-Z0-9_-]/g, "_").substring(0, 40);
       window.downloaderEngine.downloadFile(audioUrl, `${cleanTitle}.mp3`);
-      showToast("Downloading audio MP3...");
+      showToast(window.i18n ? window.i18n.t("toast.downloading") : "Downloading audio MP3...");
     }
   });
 
@@ -445,7 +445,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const url = selectedFormat?.url || currentMedia.videoUrl;
     if (url) {
       await navigator.clipboard.writeText(url);
-      showToast("Direct video URL copied to clipboard!");
+      showToast(window.i18n ? window.i18n.t("toast.copied") : "Direct video URL copied to clipboard!");
     }
   });
 
@@ -630,7 +630,14 @@ document.addEventListener("DOMContentLoaded", () => {
   clearHistoryBtn.addEventListener("click", () => {
     localStorage.removeItem("clipper_history");
     renderHistory();
-    showToast("Download history cleared.");
+    showToast(window.i18n ? window.i18n.t("toast.historyCleared") : "Download history cleared.");
+  });
+
+  // Re-sync UI labels when language changes dynamically
+  window.addEventListener("dr_language_changed", () => {
+    if (selectedFormat) {
+      updateDownloadButtonLabel(selectedFormat);
+    }
   });
 
   // -------------------------------------------------------------

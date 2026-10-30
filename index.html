@@ -10,6 +10,15 @@
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <meta name="theme-color" content="#09090b">
   <link rel="canonical" href="https://download-reels.github.io/">
+  <link rel="alternate" hreflang="x-default" href="https://download-reels.github.io/">
+  <link rel="alternate" hreflang="en" href="https://download-reels.github.io/?lang=en">
+  <link rel="alternate" hreflang="es" href="https://download-reels.github.io/?lang=es">
+  <link rel="alternate" hreflang="pt" href="https://download-reels.github.io/?lang=pt">
+  <link rel="alternate" hreflang="id" href="https://download-reels.github.io/?lang=id">
+  <link rel="alternate" hreflang="hi" href="https://download-reels.github.io/?lang=hi">
+  <link rel="alternate" hreflang="ar" href="https://download-reels.github.io/?lang=ar">
+  <link rel="alternate" hreflang="ru" href="https://download-reels.github.io/?lang=ru">
+  <link rel="alternate" hreflang="fr" href="https://download-reels.github.io/?lang=fr">
   <meta name="google-site-verification" content="8f586976ffe64162">
   <meta name="google-site-verification" content="google8f586976ffe64162">
 
@@ -155,9 +164,33 @@
       <div class="flex items-center gap-2">
         
         <!-- Live Status Pill -->
-        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border text-xs text-muted-foreground font-mono">
+        <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border text-xs text-muted-foreground font-mono">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Fast CDN</span>
+          <span data-i18n="nav.fastCdn">Fast CDN</span>
+        </div>
+
+        <!-- Language Selector Dropdown (shadcn Menu) -->
+        <div class="relative inline-block text-left" id="langSelectorWrapper">
+          <button 
+            id="langDropdownBtn" 
+            type="button" 
+            class="h-8 px-2.5 rounded-md border border-border bg-secondary hover:bg-accent text-xs font-medium text-foreground transition inline-flex items-center gap-1.5 cursor-pointer" 
+            aria-expanded="false" 
+            aria-haspopup="true"
+            title="Change Language"
+          >
+            <span id="currentLangFlag" class="text-xs">🇺🇸</span>
+            <span id="currentLangLabel" class="font-mono text-[11px] font-semibold uppercase">EN</span>
+            <svg class="w-3 h-3 text-muted-foreground transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </button>
+          <div 
+            id="langDropdownMenu" 
+            class="hidden absolute right-0 rtl:right-auto rtl:left-0 mt-1.5 w-44 rounded-md border border-border bg-card p-1 shadow-lg z-50 text-xs space-y-0.5"
+          >
+            <!-- Injected by i18n.js -->
+          </div>
         </div>
 
         <!-- Blog & Guides Link -->
@@ -165,7 +198,7 @@
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
           </svg>
-          <span>Blog & Guides</span>
+          <span data-i18n="nav.blog">Blog & Guides</span>
         </a>
 
       </div>
@@ -181,15 +214,15 @@
       <!-- SaveFrom.net Alternative Badge -->
       <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-card text-xs text-muted-foreground font-mono mb-1">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-        <span class="text-foreground font-medium">SaveFrom.net Alternative</span>
+        <span class="text-foreground font-medium" data-i18n="hero.badge">SaveFrom.net Alternative</span>
         <span class="text-zinc-500">•</span>
-        <span>Ad-Free & 100% Free</span>
+        <span data-i18n="hero.badgeFree">Ad-Free & 100% Free</span>
       </div>
 
-      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-foreground" data-i18n="hero.title">
         Universal Video Downloader & YouTube to MP3
       </h1>
-      <p class="text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed">
+      <p class="text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed" data-i18n="hero.desc">
         Save Instagram Reels, TikTok without watermark, and YouTube videos in up to 1080p MP4. Features built-in <strong class="text-foreground">320kbps MP3 Audio conversion</strong> and client-side FFmpeg processing.
       </p>
     </div>
@@ -213,6 +246,7 @@
           id="urlInput"
           type="url" 
           placeholder="Paste Instagram, TikTok, YouTube, or video URL..." 
+          data-i18n-placeholder="input.placeholder"
           autocomplete="off"
           spellcheck="false"
           autofocus
@@ -239,7 +273,7 @@
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
           </svg>
-          <span>Paste</span>
+          <span data-i18n="input.paste">Paste</span>
         </button>
 
         <!-- Fetch Button -->
@@ -250,7 +284,7 @@
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
           </svg>
-          <span>Download</span>
+          <span data-i18n="input.download">Download</span>
         </button>
 
       </div>
@@ -258,21 +292,21 @@
 
     <!-- Platform Quick Badges -->
     <div class="flex flex-wrap items-center justify-center gap-1.5 mb-8 text-xs text-muted-foreground">
-      <span class="text-[11px] font-mono mr-1">Sample:</span>
+      <span class="text-[11px] font-mono mr-1" data-i18n="sample.label">Sample:</span>
       
-      <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://www.youtube.com/watch?v=QYO6AlxiRE4">
+      <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://www.youtube.com/watch?v=QYO6AlxiRE4" data-i18n="sample.youtube">
         YouTube
       </button>
 
-      <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://www.tiktok.com/@drama.clip803/video/7701550479792246047">
+      <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://www.tiktok.com/@drama.clip803/video/7701550479792246047" data-i18n="sample.tiktok">
         TikTok (No Watermark)
       </button>
 
-      <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://www.instagram.com/reel/DfGqtxDTZt_/">
+      <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://www.instagram.com/reel/DfGqtxDTZt_/" data-i18n="sample.reel">
         Instagram Reel
       </button>
 
-      <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4">
+      <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" data-i18n="sample.mp4">
         Direct MP4
       </button>
     </div>
@@ -285,9 +319,9 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
           </svg>
-          <p id="loadingStatusText" class="text-xs font-mono text-muted-foreground">Extracting video streams...</p>
+          <p id="loadingStatusText" class="text-xs font-mono text-muted-foreground" data-i18n="loading.status">Extracting video streams...</p>
         </div>
-        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-secondary text-muted-foreground animate-pulse">Resolving</span>
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-secondary text-muted-foreground animate-pulse" data-i18n="loading.resolving">Resolving</span>
       </div>
 
       <!-- Shimmer Progress Track -->
@@ -304,7 +338,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-            <span class="text-[11px] font-mono text-zinc-600">Buffering preview...</span>
+            <span class="text-[11px] font-mono text-zinc-600" data-i18n="loading.buffering">Buffering preview...</span>
           </div>
         </div>
 
@@ -347,7 +381,7 @@
         <line x1="12" y1="16" x2="12.01" y2="16"></line>
       </svg>
       <div class="flex-1 space-y-1">
-        <p class="font-semibold text-foreground">Unable to extract video</p>
+        <p class="font-semibold text-foreground" data-i18n="error.title">Unable to extract video</p>
         <p id="errorMessage" class="text-red-300 leading-relaxed"></p>
       </div>
     </div>
@@ -380,7 +414,7 @@
 
           <!-- Format Selector Pills -->
           <div>
-            <p class="text-xs text-muted-foreground mb-1.5 font-mono">Formats:</p>
+            <p class="text-xs text-muted-foreground mb-1.5 font-mono" data-i18n="result.formats">Formats:</p>
             <div id="formatSelector" class="flex flex-wrap gap-1.5"></div>
           </div>
 
@@ -395,7 +429,7 @@
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
               </svg>
-              <span>Download MP4</span>
+              <span data-i18n="result.downloadMp4">Download MP4</span>
             </button>
 
             <!-- Inline FFmpeg WebAssembly Converter Button -->
@@ -407,7 +441,7 @@
               <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
               </svg>
-              <span>Convert Format / 320k MP3 (Client FFmpeg)</span>
+              <span data-i18n="result.convertFfmpeg">Convert Format / 320k MP3 (Client FFmpeg)</span>
             </button>
 
             <!-- Secondary Actions -->
@@ -417,28 +451,28 @@
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
                 </svg>
-                <span>Audio</span>
+                <span data-i18n="result.audio">Audio</span>
               </button>
 
               <button id="copyLinkBtn" class="h-8 rounded-md border border-border bg-secondary hover:bg-accent text-foreground font-medium flex items-center justify-center gap-1.5 transition">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
                 </svg>
-                <span>Copy</span>
+                <span data-i18n="result.copy">Copy</span>
               </button>
 
               <button id="openTabBtn" class="h-8 rounded-md border border-border bg-secondary hover:bg-accent text-foreground font-medium flex items-center justify-center gap-1.5 transition">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
                 </svg>
-                <span>Tab</span>
+                <span data-i18n="result.tab">Tab</span>
               </button>
 
               <button id="qrCodeBtn" class="h-8 rounded-md border border-border bg-secondary hover:bg-accent text-foreground font-medium flex items-center justify-center gap-1.5 transition">
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
                 </svg>
-                <span>QR</span>
+                <span data-i18n="result.qr">QR</span>
               </button>
 
             </div>
@@ -451,8 +485,8 @@
     <!-- Recent Downloads History -->
     <div id="historySection" class="hidden mb-12">
       <div class="flex items-center justify-between pb-2 mb-3 border-b border-border">
-        <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono">Recent Downloads</h3>
-        <button id="clearHistoryBtn" class="text-xs text-muted-foreground hover:text-foreground transition">Clear</button>
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground font-mono" data-i18n="history.title">Recent Downloads</h3>
+        <button id="clearHistoryBtn" class="text-xs text-muted-foreground hover:text-foreground transition cursor-pointer" data-i18n="history.clear">Clear</button>
       </div>
       <div id="historyList" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
     </div>
@@ -461,18 +495,18 @@
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 border-t border-border mb-12">
       
       <div class="rounded-lg border border-border bg-card p-4 space-y-1.5">
-        <p class="text-xs font-semibold text-foreground">No Watermarks</p>
-        <p class="text-xs text-muted-foreground leading-relaxed">Direct clean video streams without added platform logos or stamps.</p>
+        <p class="text-xs font-semibold text-foreground" data-i18n="features.f1Title">No Watermarks</p>
+        <p class="text-xs text-muted-foreground leading-relaxed" data-i18n="features.f1Desc">Direct clean video streams without added platform logos or stamps.</p>
       </div>
 
       <div class="rounded-lg border border-border bg-card p-4 space-y-1.5">
-        <p class="text-xs font-semibold text-foreground">Client Fast Resolvers</p>
-        <p class="text-xs text-muted-foreground leading-relaxed">Direct streaming via CORS endpoints for YouTube and TikTok.</p>
+        <p class="text-xs font-semibold text-foreground" data-i18n="features.f2Title">Client Fast Resolvers</p>
+        <p class="text-xs text-muted-foreground leading-relaxed" data-i18n="features.f2Desc">Direct streaming via CORS endpoints for YouTube and TikTok.</p>
       </div>
 
       <div class="rounded-lg border border-border bg-card p-4 space-y-1.5">
-        <p class="text-xs font-semibold text-foreground">Mobile QR Handoff</p>
-        <p class="text-xs text-muted-foreground leading-relaxed">Scan with your camera to download directly to phone storage.</p>
+        <p class="text-xs font-semibold text-foreground" data-i18n="features.f3Title">Mobile QR Handoff</p>
+        <p class="text-xs text-muted-foreground leading-relaxed" data-i18n="features.f3Desc">Scan with your camera to download directly to phone storage.</p>
       </div>
 
     </div>
@@ -482,10 +516,10 @@
     <!-- ======================================================== -->
     <section class="mb-14 border-t border-border pt-10">
       <div class="text-center mb-8">
-        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground" data-i18n="howto.title">
           How to Download Reels & Videos in 3 Simple Steps
         </h2>
-        <p class="text-xs sm:text-sm text-muted-foreground mt-1 max-w-md mx-auto">
+        <p class="text-xs sm:text-sm text-muted-foreground mt-1 max-w-md mx-auto" data-i18n="howto.subtitle">
           Save public reels, shorts, and video clips directly to your PC, Mac, iPhone, or Android device.
         </p>
       </div>
@@ -496,8 +530,8 @@
           <div class="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center font-mono text-xs font-semibold text-foreground">
             1
           </div>
-          <h3 class="text-sm font-semibold text-foreground">Copy Video Link</h3>
-          <p class="text-xs text-muted-foreground leading-relaxed">
+          <h3 class="text-sm font-semibold text-foreground" data-i18n="howto.s1Title">Copy Video Link</h3>
+          <p class="text-xs text-muted-foreground leading-relaxed" data-i18n="howto.s1Desc">
             Open Instagram, TikTok, or YouTube. Click the "Share" button on any reel or short and copy the link.
           </p>
         </div>
@@ -506,8 +540,8 @@
           <div class="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center font-mono text-xs font-semibold text-foreground">
             2
           </div>
-          <h3 class="text-sm font-semibold text-foreground">Paste URL Above</h3>
-          <p class="text-xs text-muted-foreground leading-relaxed">
+          <h3 class="text-sm font-semibold text-foreground" data-i18n="howto.s2Title">Paste URL Above</h3>
+          <p class="text-xs text-muted-foreground leading-relaxed" data-i18n="howto.s2Desc">
             Paste the copied link into the input bar at the top of this page and click the Download button.
           </p>
         </div>
@@ -516,8 +550,8 @@
           <div class="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center font-mono text-xs font-semibold text-foreground">
             3
           </div>
-          <h3 class="text-sm font-semibold text-foreground">Save Clean MP4</h3>
-          <p class="text-xs text-muted-foreground leading-relaxed">
+          <h3 class="text-sm font-semibold text-foreground" data-i18n="howto.s3Title">Save Clean MP4</h3>
+          <p class="text-xs text-muted-foreground leading-relaxed" data-i18n="howto.s3Desc">
             Choose your preferred quality (1080p Full HD, 720p, or MP3 audio) and download with zero watermark.
           </p>
         </div>
@@ -530,10 +564,10 @@
     <!-- ======================================================== -->
     <section class="mb-14 border-t border-border pt-10">
       <div class="text-center mb-6">
-        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground" data-i18n="matrix.title">
           Supported Platforms & Quality Matrix
         </h2>
-        <p class="text-xs sm:text-sm text-muted-foreground mt-1">
+        <p class="text-xs sm:text-sm text-muted-foreground mt-1" data-i18n="matrix.subtitle">
           Universal media resolution with watermark suppression and audio separation.
         </p>
       </div>
@@ -543,11 +577,11 @@
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-border bg-secondary/50 font-mono text-[11px] text-muted-foreground">
-                <th class="p-3">Platform</th>
-                <th class="p-3">Max Quality</th>
-                <th class="p-3">Watermark</th>
-                <th class="p-3">Audio (MP3)</th>
-                <th class="p-3">Speed</th>
+                <th class="p-3" data-i18n="matrix.thPlatform">Platform</th>
+                <th class="p-3" data-i18n="matrix.thQuality">Max Quality</th>
+                <th class="p-3" data-i18n="matrix.thWatermark">Watermark</th>
+                <th class="p-3" data-i18n="matrix.thAudio">Audio (MP3)</th>
+                <th class="p-3" data-i18n="matrix.thSpeed">Speed</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border text-zinc-300">
@@ -598,15 +632,15 @@
     <section class="mb-14 border-t border-border pt-10">
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+          <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground" data-i18n="guides.title">
             Engineering Guides & Technical Blogs
           </h2>
-          <p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
+          <p class="text-xs sm:text-sm text-muted-foreground mt-0.5" data-i18n="guides.subtitle">
             Learn how to extract, encode, and download video streams programmatically.
           </p>
         </div>
         <a href="blog/" class="text-xs font-medium text-foreground hover:underline inline-flex items-center gap-1">
-          <span>All 7 Articles</span>
+          <span data-i18n="guides.allArticles">All 7 Articles</span>
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
         </a>
       </div>
@@ -657,10 +691,10 @@
     <!-- ======================================================== -->
     <section class="mb-14 border-t border-border pt-10">
       <div class="text-center mb-8">
-        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground" data-i18n="faq.title">
           Frequently Asked Questions
         </h2>
-        <p class="text-xs sm:text-sm text-muted-foreground mt-1">
+        <p class="text-xs sm:text-sm text-muted-foreground mt-1" data-i18n="faq.subtitle">
           Everything you need to know about downloading reels and videos online.
         </p>
       </div>
@@ -669,80 +703,80 @@
         
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span>Is this a working alternative to SaveFrom.net?</span>
+            <span data-i18n="faq.q1">Is this a working alternative to SaveFrom.net?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed">
+          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a1">
             Yes! With SaveFrom.net shutting down and suffering from domain seizures and intrusive adware, Download Reels was created as a clean, open-source replacement. There are 0 ads, 0 popups, no tracking cookies, and full support for 1080p MP4 video and 320kbps MP3 audio downloads.
           </p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span>Can I convert YouTube videos and shorts to 320kbps MP3?</span>
+            <span data-i18n="faq.q2">Can I convert YouTube videos and shorts to 320kbps MP3?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed">
+          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a2">
             Yes. When you paste any YouTube video or short, select the "MP3 Audio (320 kbps Ultra HQ)" pill or click "Convert Format" to encode the stream directly in your browser using our client-side FFmpeg WebAssembly engine.
           </p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span>How does the client-side FFmpeg conversion work?</span>
+            <span data-i18n="faq.q3">How does the client-side FFmpeg conversion work?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed">
+          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a3">
             Download Reels loads a WebAssembly compilation of FFmpeg directly inside your web browser. This processes, transcodes, trims, and converts video/audio on your own computer CPU without uploading your files to any remote server, guaranteeing 100% privacy and zero server queues.
           </p>
         </details>
         
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span>How do I download Instagram Reels without a watermark?</span>
+            <span data-i18n="faq.q4">How do I download Instagram Reels without a watermark?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed">
+          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a4">
             Copy the reel link directly from the Instagram mobile app or desktop browser, paste it into the URL bar above, and click Download. You will receive the original high-resolution MP4 video file with no added stamps or watermarks.
           </p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span>Can I download TikTok videos without the TikTok watermark?</span>
+            <span data-i18n="faq.q5">Can I download TikTok videos without the TikTok watermark?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed">
+          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a5">
             Yes! Download Reels connects directly to clean CDN streams via TikWM API, extracting the pure 1080p/720p HD MP4 video with no floating TikTok logo or username stamps.
           </p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span>How do I save YouTube Shorts in 1080p MP4 format?</span>
+            <span data-i18n="faq.q6">How do I save YouTube Shorts in 1080p MP4 format?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed">
+          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a6">
             Paste any YouTube Shorts or standard YouTube URL into Download Reels. Our client stream resolver instantly extracts the progressive MP4 streams and audio tracks for immediate download.
           </p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span>Is Download Reels completely free and safe to use?</span>
+            <span data-i18n="faq.q7">Is Download Reels completely free and safe to use?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed">
+          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a7">
             Yes, 100% free and open-source. There is no software to install, no sign-up or registration required, and no tracking cookies stored on your device.
           </p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span>How do I download reels on iPhone or Android mobile devices?</span>
+            <span data-i18n="faq.q8">How do I download reels on iPhone or Android mobile devices?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed">
+          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a8">
             You can either open download-reels.github.io in your mobile Safari/Chrome browser, or generate a Mobile QR code on your computer screen using the QR button and scan it with your phone camera to download directly.
           </p>
         </details>
@@ -764,13 +798,13 @@
             </svg>
             <span class="font-semibold text-foreground tracking-tight">Download Reels</span>
           </div>
-          <p class="text-muted-foreground leading-relaxed">
+          <p class="text-muted-foreground leading-relaxed" data-i18n="footer.desc">
             Free universal online video downloader for Instagram Reels, TikTok, YouTube Shorts, and X.
           </p>
         </div>
 
         <div>
-          <p class="font-semibold text-foreground mb-2.5">Platforms</p>
+          <p class="font-semibold text-foreground mb-2.5" data-i18n="footer.platforms">Platforms</p>
           <ul class="space-y-1.5">
             <li><a href="#" class="hover:text-foreground transition">Instagram Reels</a></li>
             <li><a href="#" class="hover:text-foreground transition">TikTok No Watermark</a></li>
@@ -781,7 +815,7 @@
         </div>
 
         <div>
-          <p class="font-semibold text-foreground mb-2.5">Engineering Guides</p>
+          <p class="font-semibold text-foreground mb-2.5" data-i18n="footer.guides">Engineering Guides</p>
           <ul class="space-y-1.5">
             <li><a href="blog/how-to-download-reels-python.html" class="hover:text-foreground transition">Python Downloader</a></li>
             <li><a href="blog/how-to-download-videos-javascript-nodejs.html" class="hover:text-foreground transition">JavaScript & Node.js</a></li>
@@ -793,7 +827,7 @@
         </div>
 
         <div>
-          <p class="font-semibold text-foreground mb-2.5">Resources & SEO</p>
+          <p class="font-semibold text-foreground mb-2.5" data-i18n="footer.resources">Resources & SEO</p>
           <ul class="space-y-1.5">
             <li><a href="blog/video-seo-ranking-guide.html" class="hover:text-foreground transition">Video SEO Blueprint</a></li>
             <li><a href="blog/" class="hover:text-foreground transition">Engineering Blog Hub</a></li>
@@ -806,7 +840,7 @@
       </div>
 
       <div class="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-muted-foreground text-[11px]">
-        <p>© 2026 Download Reels. Open-source under MIT License. Hosted on GitHub Pages.</p>
+        <p data-i18n="footer.copyright">© 2026 Download Reels. Open-source under MIT License. Hosted on GitHub Pages.</p>
         <p class="font-mono">Static Web App • download-reels.github.io</p>
       </div>
     </div>
@@ -877,7 +911,7 @@
           <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
           </svg>
-          <h3 class="text-sm font-semibold text-foreground">Client-Side Conversion Studio (FFmpeg)</h3>
+          <h3 class="text-sm font-semibold text-foreground" data-i18n="modal.convertTitle">Client-Side Conversion Studio (FFmpeg)</h3>
         </div>
         <button id="closeConvertBtn" class="text-muted-foreground hover:text-foreground p-1">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -885,13 +919,13 @@
       </div>
 
       <div class="space-y-4 text-xs">
-        <p class="text-muted-foreground leading-relaxed">
+        <p class="text-muted-foreground leading-relaxed" data-i18n="modal.convertDesc">
           Transcode media directly inside your browser via WebAssembly. Zero files uploaded to any server.
         </p>
 
         <!-- Format Selector -->
         <div>
-          <label class="block font-medium text-foreground mb-1.5">Target Format</label>
+          <label class="block font-medium text-foreground mb-1.5" data-i18n="modal.targetFormat">Target Format</label>
           <select id="convertFormatSelect" class="w-full rounded-md border border-input bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
             <option value="mp3">MP3 Audio (YouTube to MP3)</option>
             <option value="wav">WAV Audio (Lossless PCM)</option>
@@ -902,7 +936,7 @@
 
         <!-- Audio Bitrate (visible for MP3) -->
         <div id="convertBitrateGroup">
-          <label class="block font-medium text-foreground mb-1.5">Audio Bitrate</label>
+          <label class="block font-medium text-foreground mb-1.5" data-i18n="modal.audioBitrate">Audio Bitrate</label>
           <select id="convertBitrateSelect" class="w-full rounded-md border border-input bg-card px-3 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-ring">
             <option value="320k" selected>320 kbps (Extreme High Fidelity)</option>
             <option value="256k">256 kbps (High Quality)</option>
@@ -914,11 +948,11 @@
         <!-- Optional Trim Range -->
         <div class="grid grid-cols-2 gap-2 pt-1">
           <div>
-            <label class="block font-medium text-foreground mb-1">Start Trim (sec)</label>
+            <label class="block font-medium text-foreground mb-1" data-i18n="modal.startTrim">Start Trim (sec)</label>
             <input id="convertStartTime" type="number" min="0" placeholder="0" class="w-full rounded-md border border-input bg-card px-3 py-1.5 text-xs text-foreground font-mono focus:outline-none">
           </div>
           <div>
-            <label class="block font-medium text-foreground mb-1">End Trim (sec)</label>
+            <label class="block font-medium text-foreground mb-1" data-i18n="modal.endTrim">End Trim (sec)</label>
             <input id="convertEndTime" type="number" min="0" placeholder="Full" class="w-full rounded-md border border-input bg-card px-3 py-1.5 text-xs text-foreground font-mono focus:outline-none">
           </div>
         </div>
@@ -940,7 +974,7 @@
         <span class="text-[10px] text-muted-foreground font-mono">100% In-Browser</span>
         <button id="startConvertBtn" class="h-8 px-4 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium flex items-center gap-1.5 transition">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-          <span>Start Conversion</span>
+          <span data-i18n="modal.startConvert">Start Conversion</span>
         </button>
       </div>
     </div>
@@ -952,7 +986,7 @@
   <div id="qrModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
     <div class="w-full max-w-sm rounded-lg border border-border bg-background p-6 text-center space-y-4 shadow-xl">
       <div class="flex items-center justify-between pb-2 border-b border-border">
-        <h3 class="text-sm font-semibold text-foreground">Scan with Smartphone</h3>
+        <h3 class="text-sm font-semibold text-foreground" data-i18n="modal.qrTitle">Scan with Smartphone</h3>
         <button id="closeQrBtn" class="text-muted-foreground hover:text-foreground p-1">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
@@ -962,7 +996,7 @@
         <div id="qrcode"></div>
       </div>
 
-      <p class="text-xs text-muted-foreground">
+      <p class="text-xs text-muted-foreground" data-i18n="modal.qrDesc">
         Open your phone's camera app and point at the QR code to save directly.
       </p>
 
@@ -1012,6 +1046,7 @@
   <script src="js/platforms.js"></script>
   <script src="js/converter.js"></script>
   <script src="js/downloader.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/app.js"></script>
 
 </body>
