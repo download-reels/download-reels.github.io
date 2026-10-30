@@ -155,40 +155,17 @@
       <div class="flex items-center gap-2">
         
         <!-- Live Status Pill -->
-        <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border text-xs text-muted-foreground font-mono">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-          <span>Online</span>
+        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border text-xs text-muted-foreground font-mono">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Fast CDN</span>
         </div>
 
         <!-- Blog & Guides Link -->
-        <a href="blog/" class="h-8 px-2.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition inline-flex items-center gap-1.5">
+        <a href="blog/" class="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition inline-flex items-center gap-1.5 border border-border/40">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
           </svg>
-          <span>Blog</span>
-        </a>
-
-        <!-- Supported Platforms Button -->
-        <button id="openPlatformsBtn" class="h-8 px-2.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition inline-flex items-center gap-1.5">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
-          </svg>
-          <span>Platforms</span>
-        </button>
-
-        <!-- Settings Button -->
-        <button id="openSettingsBtn" class="h-8 w-8 rounded-md border border-border bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center transition" title="Engine Settings">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-          </svg>
-        </button>
-
-        <!-- GitHub Repo Button -->
-        <a href="https://github.com/download-reels/download-reels.github.io" target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-md border border-border bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center transition" title="GitHub Repository">
-          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
-          </svg>
+          <span>Blog & Guides</span>
         </a>
 
       </div>
@@ -283,23 +260,19 @@
     <div class="flex flex-wrap items-center justify-center gap-1.5 mb-8 text-xs text-muted-foreground">
       <span class="text-[11px] font-mono mr-1">Sample:</span>
       
-      <button class="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition" data-sample-url="https://www.youtube.com/watch?v=QYO6AlxiRE4">
+      <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://www.youtube.com/watch?v=QYO6AlxiRE4">
         YouTube
       </button>
 
-      <button class="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition" data-sample-url="https://www.tiktok.com/@drama.clip803/video/7701550479792246047">
-        TikTok
+      <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://www.tiktok.com/@drama.clip803/video/7701550479792246047">
+        TikTok (No Watermark)
       </button>
 
-      <button class="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition" data-sample-url="https://www.instagram.com/reel/DfGqtxDTZt_/">
-        Instagram
+      <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://www.instagram.com/reel/DfGqtxDTZt_/">
+        Instagram Reel
       </button>
 
-      <button class="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition" data-sample-url="https://x.com/jack/status/20">
-        X / Twitter
-      </button>
-
-      <button class="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition" data-sample-url="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4">
+      <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4">
         Direct MP4
       </button>
     </div>

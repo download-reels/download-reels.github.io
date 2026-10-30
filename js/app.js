@@ -650,57 +650,69 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  openSettingsBtn.addEventListener("click", () => {
-    initSettings();
-    settingsModal.classList.remove("hidden");
-  });
+  if (openSettingsBtn) {
+    openSettingsBtn.addEventListener("click", () => {
+      initSettings();
+      settingsModal.classList.remove("hidden");
+    });
+  }
 
-  closeSettingsBtn.addEventListener("click", () => settingsModal.classList.add("hidden"));
+  if (closeSettingsBtn) {
+    closeSettingsBtn.addEventListener("click", () => settingsModal.classList.add("hidden"));
+  }
 
-  saveSettingsBtn.addEventListener("click", () => {
-    const customUrl = apiEndpointInput.value.trim();
-    localStorage.setItem("clipper_api_url", customUrl);
-    localStorage.setItem("clipper_auto_download", autoDownloadToggle.checked ? "true" : "false");
+  if (saveSettingsBtn) {
+    saveSettingsBtn.addEventListener("click", () => {
+      const customUrl = apiEndpointInput.value.trim();
+      localStorage.setItem("clipper_api_url", customUrl);
+      localStorage.setItem("clipper_auto_download", autoDownloadToggle.checked ? "true" : "false");
 
-    window.downloaderEngine.defaultSettings.apiUrl = customUrl;
-    window.downloaderEngine.defaultSettings.autoDownload = autoDownloadToggle.checked;
+      window.downloaderEngine.defaultSettings.apiUrl = customUrl;
+      window.downloaderEngine.defaultSettings.autoDownload = autoDownloadToggle.checked;
 
-    settingsModal.classList.add("hidden");
-    showToast("Settings saved successfully!");
-  });
+      settingsModal.classList.add("hidden");
+      showToast("Settings saved successfully!");
+    });
+  }
 
-  testApiBtn.addEventListener("click", async () => {
-    const url = apiEndpointInput.value.trim();
-    if (!url) {
-      apiStatusIndicator.textContent = "Please enter an endpoint URL first";
-      apiStatusIndicator.className = "text-xs text-amber-400 mt-2";
-      return;
-    }
-
-    apiStatusIndicator.textContent = "Pinging endpoint...";
-    apiStatusIndicator.className = "text-xs text-slate-400 mt-2";
-
-    const startTime = performance.now();
-    try {
-      const res = await fetch(url, { method: "GET", mode: "cors" });
-      const latency = Math.round(performance.now() - startTime);
-
-      if (res.ok) {
-        apiStatusIndicator.textContent = `🟢 Connected successfully (${latency} ms)`;
-        apiStatusIndicator.className = "text-xs text-emerald-400 font-medium mt-2";
-      } else {
-        apiStatusIndicator.textContent = `⚠️ Endpoint responded with HTTP ${res.status}`;
-        apiStatusIndicator.className = "text-xs text-amber-400 font-medium mt-2";
+  if (testApiBtn) {
+    testApiBtn.addEventListener("click", async () => {
+      const url = apiEndpointInput.value.trim();
+      if (!url) {
+        apiStatusIndicator.textContent = "Please enter an endpoint URL first";
+        apiStatusIndicator.className = "text-xs text-amber-400 mt-2";
+        return;
       }
-    } catch (err) {
-      apiStatusIndicator.textContent = `❌ Unable to reach endpoint (CORS or offline)`;
-      apiStatusIndicator.className = "text-xs text-rose-400 font-medium mt-2";
-    }
-  });
+
+      apiStatusIndicator.textContent = "Pinging endpoint...";
+      apiStatusIndicator.className = "text-xs text-slate-400 mt-2";
+
+      const startTime = performance.now();
+      try {
+        const res = await fetch(url, { method: "GET", mode: "cors" });
+        const latency = Math.round(performance.now() - startTime);
+
+        if (res.ok) {
+          apiStatusIndicator.textContent = `🟢 Connected successfully (${latency} ms)`;
+          apiStatusIndicator.className = "text-xs text-emerald-400 font-medium mt-2";
+        } else {
+          apiStatusIndicator.textContent = `⚠️ Endpoint responded with HTTP ${res.status}`;
+          apiStatusIndicator.className = "text-xs text-amber-400 font-medium mt-2";
+        }
+      } catch (err) {
+        apiStatusIndicator.textContent = `❌ Unable to reach endpoint (CORS or offline)`;
+        apiStatusIndicator.className = "text-xs text-rose-400 font-medium mt-2";
+      }
+    });
+  }
 
   // Platforms Modal
-  openPlatformsBtn.addEventListener("click", () => platformsModal.classList.remove("hidden"));
-  closePlatformsBtn.addEventListener("click", () => platformsModal.classList.add("hidden"));
+  if (openPlatformsBtn) {
+    openPlatformsBtn.addEventListener("click", () => platformsModal.classList.remove("hidden"));
+  }
+  if (closePlatformsBtn) {
+    closePlatformsBtn.addEventListener("click", () => platformsModal.classList.add("hidden"));
+  }
 
   // -------------------------------------------------------------
   // Helpers & UI Utilities
@@ -719,26 +731,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function showError(msg) {
-    if (msg.includes("Settings ⚙️")) {
-      errorMessage.innerHTML = `
-        <div class="space-y-2">
-          <p>${msg}</p>
-          <button id="errorOpenSettingsBtn" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md border border-border bg-card hover:bg-accent text-foreground text-xs font-medium transition cursor-pointer">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-            <span>Open Engine Settings ⚙️</span>
-          </button>
-        </div>
-      `;
-      const btn = document.getElementById("errorOpenSettingsBtn");
-      if (btn) {
-        btn.addEventListener("click", () => {
-          initSettings();
-          settingsModal.classList.remove("hidden");
-        });
-      }
-    } else {
-      errorMessage.textContent = msg;
-    }
+    const cleanMsg = msg
+      .replace(/Deploy the included Cloudflare Worker.*?Settings ⚙️\./g, "Please verify the post is public and contains video.")
+      .replace(/Configure a backend proxy in Settings ⚙️ or check that the URL is a valid public video link\./g, "Please verify that the URL is a valid public video link.")
+      .replace(/Configure a backend proxy in Settings ⚙️\./g, "");
+
+    errorMessage.textContent = cleanMsg.trim();
     errorBanner.classList.remove("hidden");
   }
 

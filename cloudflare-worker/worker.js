@@ -462,48 +462,86 @@ async function resolveFacebook(url) {
 }
 
 /**
- * Resolves Twitter / X video using fxtwitter API
+ * Resolves Twitter / X video using fxtwitter API and vxtwitter fallback
  */
 async function resolveTwitter(url) {
   const idMatch = url.match(/\/status\/(\d+)/);
   if (!idMatch) throw new Error("Invalid Twitter / X status URL format");
 
   const tweetId = idMatch[1];
-  const fxRes = await fetch(`https://api.fxtwitter.com/status/${tweetId}`, {
-    headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
-  });
-  const data = await fxRes.json();
 
-  if (data && data.tweet && data.tweet.media && data.tweet.media.videos) {
-    const videos = data.tweet.media.videos;
-    const bestVideo = videos[0];
+  // 1. Try fxtwitter API
+  try {
+    const fxRes = await fetch(`https://api.fxtwitter.com/status/${tweetId}`, {
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+    });
+    if (fxRes.ok) {
+      const data = await fxRes.json();
+      if (data && data.tweet) {
+        if (!data.tweet.media || !data.tweet.media.videos || data.tweet.media.videos.length === 0) {
+          throw new Error("This X/Twitter post does not contain any video media.");
+        }
 
-    const formats = (bestVideo.variants || [])
-      .filter(v => v.url)
-      .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))
-      .map(v => ({
-        label: `MP4 ${v.url.includes("1080") ? "1080p" : v.url.includes("720") ? "720p" : v.url.includes("480") ? "480p" : "360p"}`,
-        url: v.url,
-        quality: v.url.includes("1080") ? "1080p" : v.url.includes("720") ? "720p" : v.url.includes("480") ? "480p" : "360p",
-        ext: "mp4",
-      }));
+        const videos = data.tweet.media.videos;
+        const bestVideo = videos[0];
 
-    if (formats.length === 0 && bestVideo.url) {
-      formats.push({ label: "MP4 Video", url: bestVideo.url, quality: "HD", ext: "mp4" });
+        const formats = (bestVideo.variants || [])
+          .filter(v => v.url)
+          .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))
+          .map(v => ({
+            label: `MP4 ${v.url.includes("1080") ? "1080p" : v.url.includes("720") ? "720p" : v.url.includes("480") ? "480p" : "360p"}`,
+            url: v.url,
+            quality: v.url.includes("1080") ? "1080p" : v.url.includes("720") ? "720p" : v.url.includes("480") ? "480p" : "360p",
+            ext: "mp4",
+          }));
+
+        if (formats.length === 0 && bestVideo.url) {
+          formats.push({ label: "MP4 Video", url: bestVideo.url, quality: "HD", ext: "mp4" });
+        }
+
+        return {
+          status: "success",
+          platform: "twitter",
+          title: data.tweet.text || "X (Twitter) Video",
+          author: data.tweet.author ? `@${data.tweet.author.screen_name}` : "X User",
+          thumbnailUrl: bestVideo.thumbnail_url || null,
+          videoUrl: bestVideo.url,
+          formats,
+        };
+      }
     }
-
-    return {
-      status: "success",
-      platform: "twitter",
-      title: data.tweet.text || "X (Twitter) Video",
-      author: data.tweet.author ? `@${data.tweet.author.screen_name}` : "X User",
-      thumbnailUrl: bestVideo.thumbnail_url || null,
-      videoUrl: bestVideo.url,
-      formats,
-    };
+  } catch (e) {
+    if (e.message && e.message.includes("does not contain any video")) throw e;
   }
 
-  throw new Error("No video found in this tweet/post.");
+  // 2. Try vxtwitter fallback
+  try {
+    const vxRes = await fetch(`https://api.vxtwitter.com/status/${tweetId}`);
+    if (vxRes.ok) {
+      const vxData = await vxRes.json();
+      if (vxData.hasMedia === false || (vxData.media_extended && vxData.media_extended.length === 0)) {
+        throw new Error("This X/Twitter post does not contain any video media.");
+      }
+      if (vxData.media_extended && vxData.media_extended.length > 0) {
+        const videoItem = vxData.media_extended.find(m => m.type === "video" || m.type === "gif");
+        if (videoItem && videoItem.url) {
+          return {
+            status: "success",
+            platform: "twitter",
+            title: vxData.text || "X (Twitter) Video",
+            author: vxData.user_name || "X User",
+            thumbnailUrl: videoItem.thumbnail_url || null,
+            videoUrl: videoItem.url,
+            formats: [{ label: "Original MP4 Video", url: videoItem.url, quality: "HD", ext: "mp4" }],
+          };
+        }
+      }
+    }
+  } catch (vxErr) {
+    if (vxErr.message && vxErr.message.includes("does not contain any video")) throw vxErr;
+  }
+
+  throw new Error("Unable to extract video from this X/Twitter post. Ensure the tweet is public and contains video.");
 }
 
 /**
