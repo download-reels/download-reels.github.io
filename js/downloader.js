@@ -14,8 +14,7 @@ class DownloaderEngine {
 
     // Built-in public fallback instances
     this.cobaltInstances = [
-      "https://cobalt.canine.tools",
-      "https://api.cobalt.tools"
+      "https://cobalt.canine.tools"
     ];
   }
 
@@ -63,6 +62,15 @@ class DownloaderEngine {
         return await this.resolveTwitter(cleanUrl);
       } catch (err) {
         console.warn("FxTwitter failed, trying fallback...", err);
+      }
+    }
+
+    if (platform && platform.id === "youtube") {
+      try {
+        onProgress({ stage: "resolving", message: "Extracting YouTube stream..." });
+        return await this.resolveYouTube(cleanUrl);
+      } catch (err) {
+        console.warn("YouTube client resolver failed, trying fallback...", err);
       }
     }
 
@@ -241,6 +249,91 @@ class DownloaderEngine {
   }
 
   /**
+   * YouTube and Shorts resolver via CORS-enabled public Piped stream proxies
+   */
+  async resolveYouTube(url) {
+    const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+    if (!match) throw new Error("Invalid YouTube link format.");
+
+    const videoId = match[1];
+    const pipedInstances = [
+      "https://api.piped.private.coffee",
+      "https://pipedapi.kavin.rocks",
+      "https://piped.video"
+    ];
+
+    let lastErr = null;
+    for (const inst of pipedInstances) {
+      try {
+        const res = await fetch(`${inst}/streams/${videoId}`);
+        if (!res.ok) continue;
+        const data = await res.json();
+
+        if (data && data.videoStreams && data.videoStreams.length > 0) {
+          const formats = [];
+
+          // Progressive muxed video streams
+          data.videoStreams.forEach(s => {
+            if (!s.videoOnly && s.url) {
+              formats.push({
+                label: `MP4 (${s.quality || "360p"})`,
+                url: s.url,
+                quality: s.quality || "Standard",
+                ext: "mp4"
+              });
+            }
+          });
+
+          // Fallback to all video streams if none muxed
+          if (formats.length === 0) {
+            data.videoStreams.forEach(s => {
+              if (s.url) {
+                formats.push({
+                  label: `${s.format || "MP4"} (${s.quality || "HD"})`,
+                  url: s.url,
+                  quality: s.quality || "HD",
+                  ext: s.format ? s.format.toLowerCase() : "mp4"
+                });
+              }
+            });
+          }
+
+          // Audio streams
+          if (data.audioStreams && data.audioStreams.length > 0) {
+            const bestAudio = data.audioStreams[0];
+            formats.push({
+              label: `Audio (${bestAudio.format || "M4A"} ${bestAudio.quality || ""})`.trim(),
+              url: bestAudio.url,
+              quality: "audio",
+              ext: "mp3"
+            });
+          }
+
+          if (formats.length > 0) {
+            return {
+              status: "success",
+              platform: "youtube",
+              id: videoId,
+              title: data.title || "YouTube Video",
+              author: data.uploader || "YouTube Creator",
+              authorHandle: data.uploaderUrl ? data.uploaderUrl.split("/").pop() : null,
+              thumbnailUrl: data.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+              duration: data.duration,
+              videoUrl: formats[0].url,
+              audioUrl: data.audioStreams && data.audioStreams.length > 0 ? data.audioStreams[0].url : null,
+              formats: formats
+            };
+          }
+        }
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+
+    throw lastErr || new Error("Unable to extract YouTube video stream directly.");
+  }
+
+  /**
    * Resolves via custom backend (Cloudflare Worker or Python FastAPI)
    */
   async resolveViaBackend(url, backendUrl) {
@@ -286,7 +379,11 @@ class DownloaderEngine {
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error?.code || `HTTP ${res.status}`);
+          const code = errData.error?.code || "";
+          if (code.includes("jwt") || code.includes("auth") || code.includes("turnstile")) {
+            throw new Error("Public extraction server required authentication. Please configure a custom backend in Engine Settings (⚙️).");
+          }
+          throw new Error(code || `HTTP ${res.status}`);
         }
 
         const data = await res.json();

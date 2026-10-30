@@ -84,7 +84,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const platform = detectPlatform(val);
     if (platform) {
       platformIcon.innerHTML = platform.icon;
-      platformIcon.style.color = platform.color;
       platformNameTag.textContent = platform.name;
       platformNameTag.classList.remove("hidden");
     } else {
@@ -93,10 +92,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function resetPlatformBadge() {
-    platformIcon.innerHTML = `<svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    platformIcon.innerHTML = `<svg class="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
     </svg>`;
-    platformIcon.style.color = "";
     platformNameTag.textContent = "";
     platformNameTag.classList.add("hidden");
   }
@@ -181,11 +179,8 @@ document.addEventListener("DOMContentLoaded", () => {
     resultAuthor.textContent = media.author ? `By ${media.author}` : (media.authorHandle || "Public Media");
 
     // Platform Badge
-    const platform = detectPlatform(originalUrl) || { name: media.platform || "Video", color: "#6366f1" };
+    const platform = detectPlatform(originalUrl) || { name: media.platform || "Video", color: "#a1a1aa" };
     resultPlatformBadge.textContent = platform.name;
-    resultPlatformBadge.style.backgroundColor = platform.color + "25";
-    resultPlatformBadge.style.borderColor = platform.color + "60";
-    resultPlatformBadge.style.color = platform.color;
 
     // Video Player Preview
     if (media.videoUrl) {
@@ -204,19 +199,19 @@ document.addEventListener("DOMContentLoaded", () => {
     if (media.formats && media.formats.length > 0) {
       media.formats.forEach((fmt, index) => {
         const btn = document.createElement("button");
-        btn.className = `px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${
+        btn.className = `h-7 px-2.5 rounded-md text-xs font-medium border transition-colors ${
           index === 0
-            ? "bg-indigo-600/30 border-indigo-500 text-indigo-200"
-            : "bg-slate-800/60 border-white/10 text-slate-300 hover:border-slate-500"
+            ? "border-zinc-700 bg-zinc-100 text-zinc-900"
+            : "border-border bg-secondary text-foreground hover:bg-accent"
         }`;
         btn.textContent = fmt.label || `${fmt.quality || "Standard"} (${fmt.ext || "mp4"})`;
         
         btn.addEventListener("click", () => {
           selectedFormat = fmt;
           Array.from(formatSelector.children).forEach(b => {
-            b.className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition border bg-slate-800/60 border-white/10 text-slate-300 hover:border-slate-500";
+            b.className = "h-7 px-2.5 rounded-md text-xs font-medium border border-border bg-secondary text-foreground hover:bg-accent transition-colors";
           });
-          btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition border bg-indigo-600/30 border-indigo-500 text-indigo-200";
+          btn.className = "h-7 px-2.5 rounded-md text-xs font-medium border border-zinc-700 bg-zinc-100 text-zinc-900 transition-colors";
           
           if (fmt.url && fmt.ext !== "mp3") {
             videoPlayer.src = fmt.url;
@@ -387,22 +382,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     history.forEach(item => {
       const card = document.createElement("div");
-      card.className = "flex items-center gap-3 p-2.5 rounded-xl bg-slate-900/60 border border-white/5 hover:border-white/15 transition group";
+      card.className = "flex items-center gap-3 p-2.5 rounded-lg border border-border bg-card hover:bg-accent/50 transition group";
       
       const thumb = item.thumbnail
-        ? `<img src="${item.thumbnail}" class="w-12 h-12 rounded-lg object-cover bg-black flex-shrink-0" onerror="this.style.display='none'">`
-        : `<div class="w-12 h-12 rounded-lg bg-indigo-950/40 border border-indigo-500/20 flex items-center justify-center flex-shrink-0 text-indigo-400">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg>
+        ? `<img src="${item.thumbnail}" class="w-10 h-10 rounded object-cover bg-black flex-shrink-0" onerror="this.style.display='none'">`
+        : `<div class="w-10 h-10 rounded border border-border bg-secondary flex items-center justify-center flex-shrink-0 text-muted-foreground">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg>
           </div>`;
 
       card.innerHTML = `
         ${thumb}
         <div class="flex-1 min-w-0">
-          <p class="text-xs font-semibold text-slate-200 truncate group-hover:text-indigo-300 transition">${item.title}</p>
-          <p class="text-[11px] text-slate-500 truncate">${item.author} • ${timeAgo(item.timestamp)}</p>
+          <p class="text-xs font-medium text-foreground truncate">${item.title}</p>
+          <p class="text-[11px] text-muted-foreground truncate font-mono">${item.author} • ${timeAgo(item.timestamp)}</p>
         </div>
-        <button class="p-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white transition flex-shrink-0" title="Re-download">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button class="h-7 w-7 rounded border border-border bg-secondary hover:bg-accent text-foreground flex items-center justify-center transition flex-shrink-0" title="Re-download">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
           </svg>
         </button>
@@ -513,18 +508,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function showToast(msg) {
     const toast = document.createElement("div");
-    toast.className = "fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-slate-900 border border-white/20 text-white text-sm shadow-2xl backdrop-blur-md flex items-center gap-2 transform transition-all duration-300";
+    toast.className = "fixed bottom-5 right-5 z-50 px-3 py-2 rounded-md bg-card border border-border text-foreground text-xs shadow-lg flex items-center gap-2 transform transition-all duration-200";
     toast.innerHTML = `
-      <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-3.5 h-3.5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
       </svg>
       <span>${msg}</span>
     `;
     document.body.appendChild(toast);
     setTimeout(() => {
-      toast.classList.add("opacity-0", "translate-y-2");
-      setTimeout(() => toast.remove(), 300);
-    }, 3000);
+      toast.classList.add("opacity-0", "translate-y-1");
+      setTimeout(() => toast.remove(), 200);
+    }, 2500);
   }
 
   function timeAgo(timestamp) {
