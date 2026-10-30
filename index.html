@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clipper — Universal Reel & Video Downloader</title>
+  <meta name="description" content="Download reels and videos from Instagram, TikTok, YouTube Shorts, X/Twitter, and more with no watermarks. Hosted on GitHub Pages.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="relative selection:bg-indigo-500 selection:text-white">
+
+  <!-- Background Ambient Lights -->
+  <div class="ambient-glow-1"></div>
+  <div class="ambient-glow-2"></div>
+
+  <!-- Navigation -->
+  <header class="relative z-10 w-full border-b border-white/10 backdrop-blur-md bg-slate-950/60 sticky top-0">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <a href="#" class="flex items-center gap-2.5 group">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 group-hover:scale-105 transition">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl font-bold tracking-tight text-white font-['Plus_Jakarta_Sans']">Clipper</span>
+          <span class="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">Free</span>
+        </div>
+      </a>
+
+      <!-- Right Nav Actions -->
+      <div class="flex items-center gap-3">
+        
+        <!-- Engine Status Badge -->
+        <div class="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-medium text-emerald-400">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span>Engine Online</span>
+        </div>
+
+        <!-- Supported Platforms Button -->
+        <button id="openPlatformsBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5 border border-transparent hover:border-white/10">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+          </svg>
+          <span class="hidden md:inline">Supported Sites</span>
+        </button>
+
+        <!-- Settings Button -->
+        <button id="openSettingsBtn" class="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/5 border border-white/5 hover:border-white/15 transition" title="Backend Settings">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+          </svg>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Hero Content -->
+  <main class="relative z-10 max-w-4xl mx-auto px-4 pt-12 pb-24">
+    
+    <!-- Hero Header -->
+    <div class="text-center space-y-4 mb-8">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-slate-300 backdrop-blur-md">
+        <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+        Watermark-Free HD Video & Reel Downloader
+      </div>
+      
+      <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-white">
+        Download <span class="text-gradient-brand">Any Reel or Video</span>
+      </h1>
+      
+      <p class="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto">
+        Paste a link from Instagram Reels, TikTok, YouTube Shorts, X/Twitter, or any direct video link to stream and download in full HD.
+      </p>
+    </div>
+
+    <!-- The Universal Input Bar -->
+    <div class="relative max-w-3xl mx-auto mb-6">
+      <div class="glass-input rounded-2xl p-2 sm:p-2.5 flex items-center gap-2 shadow-2xl relative z-10">
+        
+        <!-- Platform Badge / Link Icon -->
+        <div class="pl-2.5 flex items-center gap-1.5 flex-shrink-0">
+          <div id="platformIcon" class="w-6 h-6 flex items-center justify-center text-slate-400 transition-all duration-200">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+            </svg>
+          </div>
+          <span id="platformNameTag" class="hidden text-[11px] font-bold px-2 py-0.5 rounded-md bg-white/10 text-white"></span>
+        </div>
+
+        <!-- Main Input Field -->
+        <input 
+          id="urlInput"
+          type="url" 
+          placeholder="Paste reel or video link here..." 
+          autocomplete="off"
+          spellcheck="false"
+          class="w-full bg-transparent border-0 text-slate-100 placeholder-slate-500 focus:ring-0 focus:outline-none text-sm sm:text-base font-medium px-2 py-1"
+        >
+
+        <!-- Clear Button (×) -->
+        <button 
+          id="clearBtn" 
+          class="hidden text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition"
+          title="Clear input"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+
+        <!-- Paste Button -->
+        <button 
+          id="pasteBtn" 
+          class="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/5 transition flex-shrink-0"
+          title="Paste from clipboard"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+          </svg>
+          Paste
+        </button>
+
+        <!-- Fetch / Download Action Button -->
+        <button 
+          id="fetchBtn" 
+          class="btn-primary text-white font-semibold text-xs sm:text-sm px-4 sm:px-6 py-2.5 rounded-xl flex items-center gap-2 flex-shrink-0 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+          </svg>
+          <span>Download</span>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Supported Platform Chips -->
+    <div class="flex flex-wrap items-center justify-center gap-2 mb-10 text-xs">
+      <span class="text-slate-500 font-medium mr-1">Supported:</span>
+      
+      <button class="platform-pill px-2.5 py-1 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-300 font-medium flex items-center gap-1.5" data-sample-url="https://www.instagram.com/reel/C-example/">
+        <span class="w-2 h-2 rounded-full bg-pink-500"></span>
+        Instagram Reels
+      </button>
+
+      <button class="platform-pill px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 font-medium flex items-center gap-1.5" data-sample-url="https://www.tiktok.com/@tiktok/video/7142393816136437018">
+        <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+        TikTok
+      </button>
+
+      <button class="platform-pill px-2.5 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 font-medium flex items-center gap-1.5" data-sample-url="https://www.youtube.com/shorts/dQw4w9WgXcQ">
+        <span class="w-2 h-2 rounded-full bg-red-500"></span>
+        YouTube Shorts
+      </button>
+
+      <button class="platform-pill px-2.5 py-1 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-300 font-medium flex items-center gap-1.5" data-sample-url="https://x.com/jack/status/20">
+        <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+        X / Twitter
+      </button>
+
+      <button class="platform-pill px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-medium flex items-center gap-1.5" data-sample-url="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        Direct MP4
+      </button>
+    </div>
+
+    <!-- Loading State Skeleton -->
+    <div id="loadingState" class="hidden max-w-2xl mx-auto glass-panel rounded-2xl p-6 text-center space-y-4 mb-8">
+      <div class="inline-flex p-3 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 animate-spin">
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+      </div>
+      <div>
+        <p id="loadingStatusText" class="text-sm font-semibold text-slate-200">Analyzing video stream...</p>
+        <p class="text-xs text-slate-400 mt-1">Connecting to video resolver and extracting media links</p>
+      </div>
+      <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+        <div id="progressBar" class="bg-gradient-to-r from-indigo-500 to-purple-500 h-1.5 rounded-full transition-all duration-300 shimmer-progress" style="width: 30%;"></div>
+      </div>
+    </div>
+
+    <!-- Error Banner -->
+    <div id="errorBanner" class="hidden max-w-2xl mx-auto p-4 rounded-2xl bg-rose-950/40 border border-rose-500/30 text-rose-200 mb-8 flex items-start gap-3">
+      <div class="p-1 rounded-lg bg-rose-500/20 text-rose-400 flex-shrink-0 mt-0.5">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+      </div>
+      <div class="flex-1 text-xs sm:text-sm">
+        <p class="font-semibold text-white">Extraction Notice</p>
+        <p id="errorMessage" class="text-rose-300 mt-1"></p>
+      </div>
+    </div>
+
+    <!-- Media Result Card -->
+    <div id="resultCard" class="hidden max-w-3xl mx-auto glass-panel rounded-2xl p-5 sm:p-6 mb-12 transition-all">
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+        
+        <!-- Video Preview Container -->
+        <div class="md:col-span-5 flex justify-center">
+          <div class="reel-video-container w-full max-w-[280px] shadow-2xl border border-white/10 relative group">
+            <video id="videoPlayer" controls playsinline class="rounded-xl"></video>
+            <img id="videoThumbnail" class="hidden rounded-xl w-full h-full object-cover">
+          </div>
+        </div>
+
+        <!-- Video Info & Download Options -->
+        <div class="md:col-span-7 space-y-4">
+          
+          <!-- Platform & Creator Header -->
+          <div class="flex items-center justify-between gap-2">
+            <span id="resultPlatformBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold border">Platform</span>
+            <span id="resultAuthor" class="text-xs text-slate-400 font-medium truncate"></span>
+          </div>
+
+          <!-- Video Title / Caption -->
+          <div>
+            <h3 id="resultTitle" class="text-base sm:text-lg font-bold text-white line-clamp-2"></h3>
+          </div>
+
+          <!-- Quality & Formats Selector -->
+          <div>
+            <p class="text-xs font-semibold text-slate-400 mb-2">Available Formats:</p>
+            <div id="formatSelector" class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <!-- Download Action Buttons -->
+          <div class="pt-2 space-y-2.5">
+            
+            <!-- Primary Download Button -->
+            <button 
+              id="primaryDownloadBtn" 
+              class="w-full btn-primary text-white font-bold text-sm py-3 px-4 rounded-xl flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              <span>Download Video (MP4)</span>
+            </button>
+
+            <!-- Secondary Actions Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+              
+              <!-- Audio MP3 -->
+              <button id="audioDownloadBtn" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-white/5 text-slate-200 font-semibold flex items-center justify-center gap-1.5 transition">
+                <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                </svg>
+                <span>MP3 Audio</span>
+              </button>
+
+              <!-- Copy Link -->
+              <button id="copyLinkBtn" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-white/5 text-slate-200 font-semibold flex items-center justify-center gap-1.5 transition">
+                <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                </svg>
+                <span>Copy Link</span>
+              </button>
+
+              <!-- Open in New Tab -->
+              <button id="openTabBtn" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-white/5 text-slate-200 font-semibold flex items-center justify-center gap-1.5 transition">
+                <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                </svg>
+                <span>Direct Tab</span>
+              </button>
+
+              <!-- QR Code Mobile Transfer -->
+              <button id="qrCodeBtn" class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-white/5 text-slate-200 font-semibold flex items-center justify-center gap-1.5 transition">
+                <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                </svg>
+                <span>Mobile QR</span>
+              </button>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Downloads History Section -->
+    <div id="historySection" class="hidden mb-16">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-slate-400">Recent Downloads</h3>
+        <button id="clearHistoryBtn" class="text-xs text-slate-500 hover:text-slate-300 transition">Clear History</button>
+      </div>
+      <div id="historyList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3"></div>
+    </div>
+
+    <!-- Feature Highlights -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 pt-6 border-t border-white/10">
+      
+      <div class="glass-panel p-5 rounded-2xl space-y-2">
+        <div class="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mb-3">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+        </div>
+        <h4 class="text-sm font-bold text-white">No Watermarks</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Downloads original, clean video streams without intrusive watermarks or stamps.</p>
+      </div>
+
+      <div class="glass-panel p-5 rounded-2xl space-y-2">
+        <div class="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mb-3">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+        </div>
+        <h4 class="text-sm font-bold text-white">High Speed & Free</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Client-accelerated streams. Zero fees, zero registration, and zero ads.</p>
+      </div>
+
+      <div class="glass-panel p-5 rounded-2xl space-y-2">
+        <div class="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mb-3">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+          </svg>
+        </div>
+        <h4 class="text-sm font-bold text-white">Mobile QR Handoff</h4>
+        <p class="text-xs text-slate-400 leading-relaxed">Browse on your desktop, scan the instant QR code with your phone to download directly to your camera roll.</p>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="relative z-10 border-t border-white/5 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-4xl mx-auto px-4 space-y-2">
+      <p>Clipper is an open-source media utility. Designed for personal and fair-use archiving of public content.</p>
+      <p>Hosted on <span class="text-slate-300 font-semibold">GitHub Pages</span> • Built with HTML5 & modern JavaScript.</p>
+    </div>
+  </footer>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: Settings & Custom Backend                         -->
+  <!-- ======================================================== -->
+  <div id="settingsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 space-y-5 border border-white/10 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-white/10">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+          </svg>
+          <h3 class="text-base font-bold text-white">Engine Settings</h3>
+        </div>
+        <button id="closeSettingsBtn" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block font-semibold text-slate-200 mb-1">Custom API / Worker Endpoint (Optional)</label>
+          <p class="text-slate-400 mb-2 leading-relaxed">
+            By default, Clipper uses client-side resolvers (TikWM, FXTwitter, Cobalt). If you deploy our free 1-click Cloudflare Worker or Python backend, paste its URL here to bypass Instagram anti-bot checks:
+          </p>
+          <div class="flex gap-2">
+            <input 
+              id="apiEndpointInput" 
+              type="url" 
+              placeholder="e.g. https://my-clipper-worker.workers.dev" 
+              class="flex-1 bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-white font-mono text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+            >
+            <button id="testApiBtn" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-semibold border border-white/5 transition">
+              Test
+            </button>
+          </div>
+          <p id="apiStatusIndicator" class="text-xs text-slate-500 mt-2"></p>
+        </div>
+
+        <div class="pt-2 border-t border-white/10">
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input id="autoDownloadToggle" type="checkbox" class="rounded bg-slate-900 border-white/20 text-indigo-600 focus:ring-indigo-500 w-4 h-4">
+            <div>
+              <p class="font-semibold text-slate-200">Auto-Download on Resolve</p>
+              <p class="text-slate-400">Trigger browser download immediately when a video link is resolved instead of previewing first.</p>
+            </div>
+          </label>
+        </div>
+
+        <div class="p-3 rounded-xl bg-indigo-950/30 border border-indigo-500/20 text-indigo-300">
+          <p class="font-bold mb-1">💡 GitHub Pages Tip:</p>
+          <p class="leading-relaxed">This static app runs 100% on GitHub Pages. To resolve Instagram Reels without hitting browser CORS blocks, deploy the included <code class="text-white">cloudflare-worker/worker.js</code> for free (100k requests/day at $0).</p>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-white/10 flex justify-end gap-2">
+        <button id="saveSettingsBtn" class="btn-primary text-white text-xs font-semibold px-4 py-2 rounded-xl">
+          Save Settings
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: Mobile QR Code Modal                              -->
+  <!-- ======================================================== -->
+  <div id="qrModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="glass-panel max-w-sm w-full rounded-2xl p-6 text-center space-y-4 border border-white/10 shadow-2xl">
+      <div class="flex items-center justify-between pb-2 border-b border-white/10">
+        <h3 class="text-sm font-bold text-white">Scan to Download on Phone</h3>
+        <button id="closeQrBtn" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div class="p-4 bg-white rounded-2xl inline-block shadow-lg mx-auto">
+        <div id="qrcode" class="flex justify-center"></div>
+      </div>
+
+      <div class="text-xs text-slate-400 space-y-1">
+        <p class="text-slate-200 font-semibold">Instructions:</p>
+        <p>1. Open the Camera app on your iPhone or Android.</p>
+        <p>2. Point it at the QR code to open the direct video stream.</p>
+        <p>3. Tap "Save Video" to store it directly in your Camera Roll.</p>
+      </div>
+
+      <div class="pt-2 text-[10px] text-slate-500 font-mono truncate" id="qrTargetUrl"></div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: Supported Platforms & FAQ                         -->
+  <!-- ======================================================== -->
+  <div id="platformsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 space-y-4 border border-white/10 shadow-2xl">
+      <div class="flex items-center justify-between pb-3 border-b border-white/10">
+        <h3 class="text-base font-bold text-white">Supported Platforms & FAQ</h3>
+        <button id="closePlatformsBtn" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-300 max-h-[60vh] overflow-y-auto pr-1">
+        <div class="p-3 rounded-xl bg-slate-900 border border-white/5 space-y-1">
+          <p class="font-bold text-white">📱 Instagram Reels & Posts</p>
+          <p class="text-slate-400">Downloads public reels, videos, and post carousels. Note: Private accounts cannot be downloaded without session credentials.</p>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-900 border border-white/5 space-y-1">
+          <p class="font-bold text-white">🎵 TikTok (Watermark-Free)</p>
+          <p class="text-slate-400">Directly extracts HD mp4 videos without the bouncing TikTok watermark, plus individual background music (MP3).</p>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-900 border border-white/5 space-y-1">
+          <p class="font-bold text-white">🔴 YouTube Shorts & Videos</p>
+          <p class="text-slate-400">Supports standard YouTube video URLs and vertical Shorts in 1080p, 720p, or audio.</p>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-900 border border-white/5 space-y-1">
+          <p class="font-bold text-white">🐦 X (formerly Twitter)</p>
+          <p class="text-slate-400">Extracts video tweets, clips, and gif-videos at maximum resolution.</p>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-900 border border-white/5 space-y-1">
+          <p class="font-bold text-white">🎬 Direct Video URLs</p>
+          <p class="text-slate-400">Any direct link ending in .mp4, .webm, .mov, or .m4v will be downloaded directly via browser streaming.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/qrcode.min.js"></script>
+  <script src="js/platforms.js"></script>
+  <script src="js/downloader.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

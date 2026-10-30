@@ -1,0 +1,539 @@
+/**
+ * Clipper - Main Application Controller
+ */
+
+document.addEventListener("DOMContentLoaded", () => {
+  // DOM Elements
+  const urlInput = document.getElementById("urlInput");
+  const clearBtn = document.getElementById("clearBtn");
+  const pasteBtn = document.getElementById("pasteBtn");
+  const fetchBtn = document.getElementById("fetchBtn");
+  const platformIcon = document.getElementById("platformIcon");
+  const platformNameTag = document.getElementById("platformNameTag");
+
+  // State & Loading
+  const loadingState = document.getElementById("loadingState");
+  const loadingStatusText = document.getElementById("loadingStatusText");
+  const progressBar = document.getElementById("progressBar");
+  const errorBanner = document.getElementById("errorBanner");
+  const errorMessage = document.getElementById("errorMessage");
+
+  // Result Card Elements
+  const resultCard = document.getElementById("resultCard");
+  const videoPlayer = document.getElementById("videoPlayer");
+  const videoThumbnail = document.getElementById("videoThumbnail");
+  const resultTitle = document.getElementById("resultTitle");
+  const resultAuthor = document.getElementById("resultAuthor");
+  const resultPlatformBadge = document.getElementById("resultPlatformBadge");
+  const formatSelector = document.getElementById("formatSelector");
+  const primaryDownloadBtn = document.getElementById("primaryDownloadBtn");
+  const audioDownloadBtn = document.getElementById("audioDownloadBtn");
+  const copyLinkBtn = document.getElementById("copyLinkBtn");
+  const openTabBtn = document.getElementById("openTabBtn");
+  const qrCodeBtn = document.getElementById("qrCodeBtn");
+
+  // History Elements
+  const historySection = document.getElementById("historySection");
+  const historyList = document.getElementById("historyList");
+  const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+
+  // Modals
+  const settingsModal = document.getElementById("settingsModal");
+  const openSettingsBtn = document.getElementById("openSettingsBtn");
+  const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+  const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+  const apiEndpointInput = document.getElementById("apiEndpointInput");
+  const testApiBtn = document.getElementById("testApiBtn");
+  const apiStatusIndicator = document.getElementById("apiStatusIndicator");
+  const autoDownloadToggle = document.getElementById("autoDownloadToggle");
+
+  const qrModal = document.getElementById("qrModal");
+  const closeQrBtn = document.getElementById("closeQrBtn");
+  const qrcodeContainer = document.getElementById("qrcode");
+  const qrTargetUrl = document.getElementById("qrTargetUrl");
+
+  const platformsModal = document.getElementById("platformsModal");
+  const openPlatformsBtn = document.getElementById("openPlatformsBtn");
+  const closePlatformsBtn = document.getElementById("closePlatformsBtn");
+
+  // Active state
+  let currentMedia = null;
+  let selectedFormat = null;
+  let qrcodeInstance = null;
+
+  // Initialize
+  initSettings();
+  renderHistory();
+  setupSamplePills();
+
+  // -------------------------------------------------------------
+  // Input & Platform Detection Events
+  // -------------------------------------------------------------
+
+  function handleInputChange() {
+    const val = urlInput.value.trim();
+    
+    // Toggle clear button
+    clearBtn.classList.toggle("hidden", val.length === 0);
+
+    if (!val) {
+      resetPlatformBadge();
+      return;
+    }
+
+    const platform = detectPlatform(val);
+    if (platform) {
+      platformIcon.innerHTML = platform.icon;
+      platformIcon.style.color = platform.color;
+      platformNameTag.textContent = platform.name;
+      platformNameTag.classList.remove("hidden");
+    } else {
+      resetPlatformBadge();
+    }
+  }
+
+  function resetPlatformBadge() {
+    platformIcon.innerHTML = `<svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path>
+    </svg>`;
+    platformIcon.style.color = "";
+    platformNameTag.textContent = "";
+    platformNameTag.classList.add("hidden");
+  }
+
+  urlInput.addEventListener("input", handleInputChange);
+  urlInput.addEventListener("paste", () => setTimeout(handleInputChange, 50));
+  
+  urlInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      startResolve();
+    }
+  });
+
+  clearBtn.addEventListener("click", () => {
+    urlInput.value = "";
+    handleInputChange();
+    urlInput.focus();
+  });
+
+  pasteBtn.addEventListener("click", async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        urlInput.value = text.trim();
+        handleInputChange();
+        startResolve();
+      }
+    } catch (err) {
+      urlInput.focus();
+      showToast("Please allow clipboard permission or paste manually.");
+    }
+  });
+
+  fetchBtn.addEventListener("click", startResolve);
+
+  // -------------------------------------------------------------
+  // Resolving & Downloading Pipeline
+  // -------------------------------------------------------------
+
+  async function startResolve() {
+    const url = urlInput.value.trim();
+    if (!url) {
+      showError("Please paste a valid video or reel URL first.");
+      urlInput.focus();
+      return;
+    }
+
+    hideError();
+    resultCard.classList.add("hidden");
+    loadingState.classList.remove("hidden");
+    fetchBtn.disabled = true;
+    progressBar.style.width = "30%";
+
+    try {
+      const media = await window.downloaderEngine.resolve(url, (status) => {
+        loadingStatusText.textContent = status.message;
+        if (status.stage === "resolving") progressBar.style.width = "65%";
+        if (status.stage === "connecting") progressBar.style.width = "85%";
+      });
+
+      progressBar.style.width = "100%";
+      setTimeout(() => {
+        loadingState.classList.add("hidden");
+        fetchBtn.disabled = false;
+        displayResult(media, url);
+      }, 400);
+
+    } catch (err) {
+      loadingState.classList.add("hidden");
+      fetchBtn.disabled = false;
+      showError(err.message || "Failed to extract video. Make sure the link is public.");
+    }
+  }
+
+  function displayResult(media, originalUrl) {
+    currentMedia = media;
+    selectedFormat = media.formats && media.formats.length > 0 ? media.formats[0] : null;
+
+    // Set Title & Author
+    resultTitle.textContent = media.title || "Video Stream";
+    resultAuthor.textContent = media.author ? `By ${media.author}` : (media.authorHandle || "Public Media");
+
+    // Platform Badge
+    const platform = detectPlatform(originalUrl) || { name: media.platform || "Video", color: "#6366f1" };
+    resultPlatformBadge.textContent = platform.name;
+    resultPlatformBadge.style.backgroundColor = platform.color + "25";
+    resultPlatformBadge.style.borderColor = platform.color + "60";
+    resultPlatformBadge.style.color = platform.color;
+
+    // Video Player Preview
+    if (media.videoUrl) {
+      videoPlayer.src = media.videoUrl;
+      videoPlayer.poster = media.thumbnailUrl || "";
+      videoPlayer.classList.remove("hidden");
+      videoThumbnail.classList.add("hidden");
+    } else if (media.thumbnailUrl) {
+      videoThumbnail.src = media.thumbnailUrl;
+      videoThumbnail.classList.remove("hidden");
+      videoPlayer.classList.add("hidden");
+    }
+
+    // Populate format buttons
+    formatSelector.innerHTML = "";
+    if (media.formats && media.formats.length > 0) {
+      media.formats.forEach((fmt, index) => {
+        const btn = document.createElement("button");
+        btn.className = `px-3 py-1.5 rounded-lg text-xs font-semibold transition border ${
+          index === 0
+            ? "bg-indigo-600/30 border-indigo-500 text-indigo-200"
+            : "bg-slate-800/60 border-white/10 text-slate-300 hover:border-slate-500"
+        }`;
+        btn.textContent = fmt.label || `${fmt.quality || "Standard"} (${fmt.ext || "mp4"})`;
+        
+        btn.addEventListener("click", () => {
+          selectedFormat = fmt;
+          Array.from(formatSelector.children).forEach(b => {
+            b.className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition border bg-slate-800/60 border-white/10 text-slate-300 hover:border-slate-500";
+          });
+          btn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold transition border bg-indigo-600/30 border-indigo-500 text-indigo-200";
+          
+          if (fmt.url && fmt.ext !== "mp3") {
+            videoPlayer.src = fmt.url;
+          }
+        });
+
+        formatSelector.appendChild(btn);
+      });
+    }
+
+    // Audio download button visibility
+    const hasAudio = media.audioUrl || (media.formats && media.formats.some(f => f.quality === "audio" || f.ext === "mp3"));
+    audioDownloadBtn.classList.toggle("hidden", !hasAudio);
+
+    // Show result card
+    resultCard.classList.remove("hidden");
+    resultCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    // Save to history
+    saveToHistory(media, originalUrl);
+
+    // Auto-download check
+    if (window.downloaderEngine.defaultSettings.autoDownload && selectedFormat) {
+      triggerPrimaryDownload();
+    }
+  }
+
+  // -------------------------------------------------------------
+  // Download Handlers
+  // -------------------------------------------------------------
+
+  async function triggerPrimaryDownload() {
+    if (!currentMedia || !selectedFormat) return;
+
+    const downloadUrl = selectedFormat.url || currentMedia.videoUrl;
+    const cleanTitle = (currentMedia.title || "video")
+      .replace(/[^a-zA-Z0-9_-]/g, "_")
+      .substring(0, 40);
+    const filename = `${cleanTitle}_${selectedFormat.quality || "hd"}.${selectedFormat.ext || "mp4"}`;
+
+    primaryDownloadBtn.disabled = true;
+    const originalText = primaryDownloadBtn.innerHTML;
+    primaryDownloadBtn.innerHTML = `
+      <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+      </svg>
+      Downloading...
+    `;
+
+    try {
+      await window.downloaderEngine.downloadFile(downloadUrl, filename, (pct, statusText) => {
+        primaryDownloadBtn.innerHTML = `
+          <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+          </svg>
+          ${pct}%
+        `;
+      });
+      showToast("Download triggered successfully!");
+    } catch (err) {
+      showToast("Download error: Opening direct link in browser...");
+      window.open(downloadUrl, "_blank");
+    } finally {
+      primaryDownloadBtn.disabled = false;
+      primaryDownloadBtn.innerHTML = originalText;
+    }
+  }
+
+  primaryDownloadBtn.addEventListener("click", triggerPrimaryDownload);
+
+  audioDownloadBtn.addEventListener("click", () => {
+    if (!currentMedia) return;
+    const audioFmt = (currentMedia.formats || []).find(f => f.quality === "audio" || f.ext === "mp3");
+    const audioUrl = currentMedia.audioUrl || (audioFmt ? audioFmt.url : null);
+    
+    if (audioUrl) {
+      const cleanTitle = (currentMedia.title || "audio").replace(/[^a-zA-Z0-9_-]/g, "_").substring(0, 40);
+      window.downloaderEngine.downloadFile(audioUrl, `${cleanTitle}.mp3`);
+      showToast("Downloading audio MP3...");
+    }
+  });
+
+  copyLinkBtn.addEventListener("click", async () => {
+    if (!currentMedia) return;
+    const url = selectedFormat?.url || currentMedia.videoUrl;
+    if (url) {
+      await navigator.clipboard.writeText(url);
+      showToast("Direct video URL copied to clipboard!");
+    }
+  });
+
+  openTabBtn.addEventListener("click", () => {
+    if (!currentMedia) return;
+    const url = selectedFormat?.url || currentMedia.videoUrl;
+    if (url) window.open(url, "_blank");
+  });
+
+  // QR Code generator for mobile downloading
+  qrCodeBtn.addEventListener("click", () => {
+    if (!currentMedia) return;
+    const mediaUrl = selectedFormat?.url || currentMedia.videoUrl;
+    if (!mediaUrl) return;
+
+    qrcodeContainer.innerHTML = "";
+    qrTargetUrl.textContent = mediaUrl;
+
+    if (window.QRCode) {
+      qrcodeInstance = new QRCode(qrcodeContainer, {
+        text: mediaUrl,
+        width: 200,
+        height: 200,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    }
+
+    qrModal.classList.remove("hidden");
+  });
+
+  closeQrBtn.addEventListener("click", () => qrModal.classList.add("hidden"));
+
+  // -------------------------------------------------------------
+  // History Management
+  // -------------------------------------------------------------
+
+  function saveToHistory(media, originalUrl) {
+    let history = [];
+    try {
+      history = JSON.parse(localStorage.getItem("clipper_history") || "[]");
+    } catch (_) {}
+
+    // Deduplicate
+    history = history.filter(item => item.url !== originalUrl);
+
+    // Prepend new item
+    history.unshift({
+      title: media.title || "Video Clip",
+      author: media.author || "Creator",
+      url: originalUrl,
+      downloadUrl: media.videoUrl,
+      thumbnail: media.thumbnailUrl,
+      platform: media.platform || "video",
+      timestamp: Date.now()
+    });
+
+    // Keep max 12 items
+    history = history.slice(0, 12);
+    localStorage.setItem("clipper_history", JSON.stringify(history));
+    renderHistory();
+  }
+
+  function renderHistory() {
+    let history = [];
+    try {
+      history = JSON.parse(localStorage.getItem("clipper_history") || "[]");
+    } catch (_) {}
+
+    if (history.length === 0) {
+      historySection.classList.add("hidden");
+      return;
+    }
+
+    historySection.classList.remove("hidden");
+    historyList.innerHTML = "";
+
+    history.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "flex items-center gap-3 p-2.5 rounded-xl bg-slate-900/60 border border-white/5 hover:border-white/15 transition group";
+      
+      const thumb = item.thumbnail
+        ? `<img src="${item.thumbnail}" class="w-12 h-12 rounded-lg object-cover bg-black flex-shrink-0" onerror="this.style.display='none'">`
+        : `<div class="w-12 h-12 rounded-lg bg-indigo-950/40 border border-indigo-500/20 flex items-center justify-center flex-shrink-0 text-indigo-400">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg>
+          </div>`;
+
+      card.innerHTML = `
+        ${thumb}
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-semibold text-slate-200 truncate group-hover:text-indigo-300 transition">${item.title}</p>
+          <p class="text-[11px] text-slate-500 truncate">${item.author} • ${timeAgo(item.timestamp)}</p>
+        </div>
+        <button class="p-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white transition flex-shrink-0" title="Re-download">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+          </svg>
+        </button>
+      `;
+
+      card.querySelector("button").addEventListener("click", () => {
+        urlInput.value = item.url;
+        handleInputChange();
+        startResolve();
+      });
+
+      historyList.appendChild(card);
+    });
+  }
+
+  clearHistoryBtn.addEventListener("click", () => {
+    localStorage.removeItem("clipper_history");
+    renderHistory();
+    showToast("Download history cleared.");
+  });
+
+  // -------------------------------------------------------------
+  // Settings & Configuration
+  // -------------------------------------------------------------
+
+  function initSettings() {
+    apiEndpointInput.value = localStorage.getItem("clipper_api_url") || "";
+    autoDownloadToggle.checked = localStorage.getItem("clipper_auto_download") === "true";
+  }
+
+  openSettingsBtn.addEventListener("click", () => {
+    initSettings();
+    settingsModal.classList.remove("hidden");
+  });
+
+  closeSettingsBtn.addEventListener("click", () => settingsModal.classList.add("hidden"));
+
+  saveSettingsBtn.addEventListener("click", () => {
+    const customUrl = apiEndpointInput.value.trim();
+    localStorage.setItem("clipper_api_url", customUrl);
+    localStorage.setItem("clipper_auto_download", autoDownloadToggle.checked ? "true" : "false");
+
+    window.downloaderEngine.defaultSettings.apiUrl = customUrl;
+    window.downloaderEngine.defaultSettings.autoDownload = autoDownloadToggle.checked;
+
+    settingsModal.classList.add("hidden");
+    showToast("Settings saved successfully!");
+  });
+
+  testApiBtn.addEventListener("click", async () => {
+    const url = apiEndpointInput.value.trim();
+    if (!url) {
+      apiStatusIndicator.textContent = "Please enter an endpoint URL first";
+      apiStatusIndicator.className = "text-xs text-amber-400 mt-2";
+      return;
+    }
+
+    apiStatusIndicator.textContent = "Pinging endpoint...";
+    apiStatusIndicator.className = "text-xs text-slate-400 mt-2";
+
+    const startTime = performance.now();
+    try {
+      const res = await fetch(url, { method: "GET", mode: "cors" });
+      const latency = Math.round(performance.now() - startTime);
+
+      if (res.ok) {
+        apiStatusIndicator.textContent = `🟢 Connected successfully (${latency} ms)`;
+        apiStatusIndicator.className = "text-xs text-emerald-400 font-medium mt-2";
+      } else {
+        apiStatusIndicator.textContent = `⚠️ Endpoint responded with HTTP ${res.status}`;
+        apiStatusIndicator.className = "text-xs text-amber-400 font-medium mt-2";
+      }
+    } catch (err) {
+      apiStatusIndicator.textContent = `❌ Unable to reach endpoint (CORS or offline)`;
+      apiStatusIndicator.className = "text-xs text-rose-400 font-medium mt-2";
+    }
+  });
+
+  // Platforms Modal
+  openPlatformsBtn.addEventListener("click", () => platformsModal.classList.remove("hidden"));
+  closePlatformsBtn.addEventListener("click", () => platformsModal.classList.add("hidden"));
+
+  // -------------------------------------------------------------
+  // Helpers & UI Utilities
+  // -------------------------------------------------------------
+
+  function setupSamplePills() {
+    const pills = document.querySelectorAll("[data-sample-url]");
+    pills.forEach(pill => {
+      pill.addEventListener("click", () => {
+        const sample = pill.getAttribute("data-sample-url");
+        urlInput.value = sample;
+        handleInputChange();
+        startResolve();
+      });
+    });
+  }
+
+  function showError(msg) {
+    errorMessage.textContent = msg;
+    errorBanner.classList.remove("hidden");
+  }
+
+  function hideError() {
+    errorBanner.classList.add("hidden");
+    errorMessage.textContent = "";
+  }
+
+  function showToast(msg) {
+    const toast = document.createElement("div");
+    toast.className = "fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-slate-900 border border-white/20 text-white text-sm shadow-2xl backdrop-blur-md flex items-center gap-2 transform transition-all duration-300";
+    toast.innerHTML = `
+      <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+      </svg>
+      <span>${msg}</span>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add("opacity-0", "translate-y-2");
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }
+
+  function timeAgo(timestamp) {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    if (seconds < 60) return "Just now";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
+  }
+});
