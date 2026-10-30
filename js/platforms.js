@@ -132,13 +132,20 @@ function cleanTrackingParams(rawUrl) {
     const url = new URL(rawUrl.trim());
     const trackingParams = [
       "igsh", "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content",
-      "si", "feature", "fbclid", "gclid", "t", "_r", "sender_device", "is_from_webapp"
+      "si", "feature", "fbclid", "gclid", "t", "_r", "sender_device", "is_from_webapp",
+      "xtok", "sfnsn", "ref", "mibextid", "s", "d"
     ];
     
-    // For TikTok, keep params if needed, but remove tracking
     trackingParams.forEach(param => url.searchParams.delete(param));
+    
+    // For Instagram and Facebook reels, strip trailing search params completely if no id is lost
+    if (url.hostname.includes("instagram.com") && url.pathname.includes("/reel/")) {
+      url.search = "";
+    }
+    
     return url.toString();
   } catch (e) {
     return rawUrl.trim();
   }
 }
+

@@ -95,6 +95,11 @@ async function resolveMediaUrl(rawUrl) {
     return await resolveInstagram(cleanUrl);
   }
 
+  // Facebook
+  if (host.includes("facebook.com") || host.includes("fb.watch")) {
+    return await resolveFacebook(cleanUrl);
+  }
+
   // Twitter / X
   if (host.includes("twitter.com") || host.includes("x.com")) {
     return await resolveTwitter(cleanUrl);
@@ -223,6 +228,53 @@ async function resolveInstagram(url) {
   }
 
   throw new Error("Instagram restricted public access for this reel. Make sure the account is public, or connect a private Cobalt instance.");
+}
+
+/**
+ * Resolves Facebook Reel or Share link
+ */
+async function resolveFacebook(url) {
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+  };
+
+  const res = await fetch(url, { headers, redirect: "follow" });
+  const html = await res.text();
+
+  // Extract HD/SD video stream URLs
+  const hdMatch = html.match(/browser_native_hd_url":"([^"]+)"/) || html.match(/"playable_url_quality_hd":"([^"]+)"/);
+  const sdMatch = html.match(/browser_native_sd_url":"([^"]+)"/) || html.match(/"playable_url":"([^"]+)"/);
+  const ogVideo = html.match(/<meta\s+(?:property|name)="og:video(?::secure_url)?"\s+content="([^"]+)"/i);
+  const titleMatch = html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i) || html.match(/<title>([^<]+)<\/title>/i);
+  const thumbMatch = html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i);
+
+  const cleanStream = (u) => u ? decodeHtml(u.replace(/\\u0025/g, "%").replace(/\\u0026/g, "&").replace(/\\\//g, "/")) : null;
+
+  const hdUrl = cleanStream(hdMatch?.[1]);
+  const sdUrl = cleanStream(sdMatch?.[1]);
+  const ogUrl = cleanStream(ogVideo?.[1]);
+
+  const targetVideoUrl = hdUrl || sdUrl || ogUrl;
+  if (targetVideoUrl) {
+    const formats = [];
+    if (hdUrl) formats.push({ label: "HD MP4 Video", url: hdUrl, quality: "1080p HD", ext: "mp4" });
+    if (sdUrl && sdUrl !== hdUrl) formats.push({ label: "Standard MP4", url: sdUrl, quality: "720p", ext: "mp4" });
+    if (formats.length === 0 && targetVideoUrl) formats.push({ label: "MP4 Video", url: targetVideoUrl, quality: "Standard", ext: "mp4" });
+
+    return {
+      status: "success",
+      platform: "facebook",
+      title: titleMatch ? decodeHtml(titleMatch[1]) : "Facebook Reel",
+      author: "Facebook Creator",
+      thumbnailUrl: thumbMatch ? cleanStream(thumbMatch[1]) : null,
+      videoUrl: targetVideoUrl,
+      formats: formats
+    };
+  }
+
+  throw new Error("Unable to extract video stream from Facebook link. The post may be private or restricted.");
 }
 
 /**
@@ -364,3 +416,4 @@ function jsonResponse(data, status = 200) {
     },
   });
 }
+
