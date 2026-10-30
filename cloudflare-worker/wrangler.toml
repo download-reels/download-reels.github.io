@@ -4,3 +4,4 @@ compatibility_date = "2024-04-01"
 
 # Automatically deploys to your free *.workers.dev subdomain
 # Run: npx wrangler deploy
+
