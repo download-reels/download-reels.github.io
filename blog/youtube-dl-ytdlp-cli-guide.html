@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mastering yt-dlp & youtube-dl: Complete CLI Cheatsheet & Automation — Download Reels</title>
+  <meta name="description" content="Complete command-line cheatsheet for yt-dlp and youtube-dl. Learn format selection (-f bv*+ba), cookie authentication, batch downloading, and MP3 extraction.">
+  <meta name="keywords" content="yt-dlp cheatsheet, youtube-dl commands, yt-dlp format selection, download youtube shorts cli, yt-dlp cookies browser">
+  <link rel="canonical" href="https://download-reels.github.io/blog/youtube-dl-ytdlp-cli-guide.html">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Download Reels">
+  <meta property="og:title" content="Mastering yt-dlp & youtube-dl: Complete CLI Cheatsheet & Automation">
+  <meta property="og:description" content="The definitive yt-dlp cheatsheet: format selection, subtitle embedding, batch scripts, and browser cookie passing.">
+  <meta property="og:url" content="https://download-reels.github.io/blog/youtube-dl-ytdlp-cli-guide.html">
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4%22/><polyline points=%227 10 12 15 17 10%22/><line x1=%2212%22 x2=%2212%22 y1=%2215%22 y2=%223%22/></svg>">
+  <link rel="stylesheet" href="../css/styles.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Mastering yt-dlp & youtube-dl: Complete CLI Cheatsheet & Automation",
+    "description": "Essential CLI flags, automation recipes, and best practices for yt-dlp media extraction.",
+    "author": {
+      "@type": "Organization",
+      "name": "Download Reels Engineering"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Download Reels",
+      "url": "https://download-reels.github.io/"
+    },
+    "datePublished": "2026-10-31",
+    "dateModified": "2026-10-31",
+    "mainEntityOfPage": "https://download-reels.github.io/blog/youtube-dl-ytdlp-cli-guide.html"
+  }
+  </script>
+</head>
+<body class="bg-background text-foreground antialiased selection:bg-zinc-800 selection:text-zinc-100 min-h-screen flex flex-col">
+
+  <header class="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div class="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+      <a href="../" class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+        </svg>
+        <span class="font-semibold text-sm tracking-tight">Download Reels</span>
+      </a>
+      <div class="flex items-center gap-2">
+        <a href="./" class="h-8 px-2.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition inline-flex items-center gap-1">
+          <span>← All Articles</span>
+        </a>
+        <a href="../" class="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium inline-flex items-center gap-1.5 transition">
+          <span>Web Tool</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-3xl mx-auto px-4 py-10 w-full">
+    
+    <nav class="flex items-center gap-1.5 text-xs text-muted-foreground font-mono mb-6">
+      <a href="../" class="hover:text-foreground">Home</a>
+      <span>/</span>
+      <a href="./" class="hover:text-foreground">Blog</a>
+      <span>/</span>
+      <span class="text-foreground">yt-dlp CLI Guide</span>
+    </nav>
+
+    <header class="mb-8 border-b border-border pb-6">
+      <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded border border-border text-xs font-mono text-muted-foreground mb-3 bg-card">
+        <span>CLI Reference</span>
+        <span>•</span>
+        <span>yt-dlp</span>
+        <span>•</span>
+        <span>10 min read</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
+        Mastering yt-dlp & youtube-dl: Complete CLI Cheatsheet & Automation
+      </h1>
+      <p class="text-muted-foreground text-sm leading-relaxed">
+        <code>yt-dlp</code> is the undisputed heavyweight of command-line media extraction. While the original <code>youtube-dl</code> project is largely stagnant and heavily throttled, <code>yt-dlp</code> receives near-daily updates to evade anti-scraping countermeasures.
+      </p>
+    </header>
+
+    <div class="rounded-lg border border-border bg-card p-4 mb-8 flex items-center justify-between gap-3 text-xs">
+      <div>
+        <span class="font-medium text-foreground">Prefer a graphical interface?</span>
+        <p class="text-muted-foreground">Download Reels lets you paste links directly in the browser.</p>
+      </div>
+      <a href="../" class="h-8 px-3 rounded-md bg-secondary text-foreground hover:bg-accent font-medium inline-flex items-center gap-1 transition flex-shrink-0">
+        Try Online Tool →
+      </a>
+    </div>
+
+    <article class="space-y-8 text-sm leading-relaxed text-zinc-300">
+
+      <section>
+        <h2 class="text-lg font-semibold text-foreground mb-2">1. Installation & Updating</h2>
+        <div class="p-4 rounded-md bg-zinc-950 border border-border font-mono text-xs text-zinc-200 overflow-x-auto leading-5 mb-2">
+<pre><code># Linux / macOS (via curl)
+sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
+
+# Upgrade to the latest build anytime
+yt-dlp -U</code></pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-foreground mb-2">2. Best Format Selection Recipes</h2>
+        <p class="mb-3 text-zinc-400">
+          Platforms like YouTube separate 1080p video and audio tracks. Use these recipes to guarantee the best combined MP4 without manual merging:
+        </p>
+        <div class="p-4 rounded-md bg-zinc-950 border border-border font-mono text-xs text-zinc-200 overflow-x-auto leading-5">
+<pre><code># Best video up to 1080p + best audio merged into MP4 container
+yt-dlp -f "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080]/bv*+ba/b" --merge-output-format mp4 "URL"
+
+# List all available resolutions and formats for a link
+yt-dlp -F "URL"
+
+# Extract audio only in 320kbps MP3
+yt-dlp -x --audio-format mp3 --audio-quality 0 "URL"</code></pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-foreground mb-2">3. Bypassing Login Walls with Browser Cookies</h2>
+        <p class="mb-3 text-zinc-400">
+          Instagram and YouTube frequently restrict access behind login prompts. With <code>yt-dlp</code>, you can borrow authenticated session cookies directly from your local browser without typing passwords:
+        </p>
+        <div class="p-4 rounded-md bg-zinc-950 border border-border font-mono text-xs text-zinc-200 overflow-x-auto leading-5">
+<pre><code># Pass cookies from Chrome
+yt-dlp --cookies-from-browser chrome "https://www.instagram.com/reel/DfGqtxDTZt_/"
+
+# Pass cookies from Firefox
+yt-dlp --cookies-from-browser firefox "https://www.instagram.com/reel/DfGqtxDTZt_/"</code></pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-foreground mb-2">4. Batch Automation with URL Lists</h2>
+        <p class="mb-3 text-zinc-400">
+          Download hundreds of reels or shorts automatically from a text file, skipping already downloaded items:
+        </p>
+        <div class="p-4 rounded-md bg-zinc-950 border border-border font-mono text-xs text-zinc-200 overflow-x-auto leading-5">
+<pre><code>yt-dlp -a urls.txt --download-archive archive.log -o "%(uploader)s/%(title)s.%(ext)s"</code></pre>
+        </div>
+      </section>
+
+      <section class="border-t border-border pt-6 mt-8">
+        <h3 class="text-sm font-semibold text-foreground mb-3">Related Guides:</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <a href="ffmpeg-video-encoding-guide.html" class="p-3 rounded-md border border-border bg-card hover:bg-accent block transition">
+            <p class="font-medium text-foreground">FFmpeg Transcoding & Encoding</p>
+            <p class="text-muted-foreground mt-0.5">Post-process downloaded streams with FFmpeg.</p>
+          </a>
+          <a href="how-to-download-reels-python.html" class="p-3 rounded-md border border-border bg-card hover:bg-accent block transition">
+            <p class="font-medium text-foreground">Python Video Downloader</p>
+            <p class="text-muted-foreground mt-0.5">Use yt-dlp as a native Python module.</p>
+          </a>
+        </div>
+      </section>
+
+    </article>
+  </main>
+
+  <footer class="border-t border-border py-6 text-xs text-muted-foreground mt-12">
+    <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>Download Reels — Open-Source Video Knowledge Base</p>
+      <a href="../" class="hover:text-foreground">Back to Web Downloader</a>
+    </div>
+  </footer>
+
+</body>
+</html>

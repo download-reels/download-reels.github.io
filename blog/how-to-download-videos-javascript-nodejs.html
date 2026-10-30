@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download Videos & Streams in JavaScript & Node.js — Complete Guide</title>
+  <meta name="description" content="Learn how to build video downloaders using modern JavaScript and Node.js. Covers Fetch Streams, chunk piping, CORS handling, and blob file downloads.">
+  <meta name="keywords" content="javascript video downloader, nodejs download video stream, fetch readablestream video, download mp4 javascript, save blob file javascript">
+  <link rel="canonical" href="https://download-reels.github.io/blog/how-to-download-videos-javascript-nodejs.html">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="Download Reels">
+  <meta property="og:title" content="Download Videos & Streams in JavaScript & Node.js">
+  <meta property="og:description" content="Guide to streaming, downloading, and saving videos with JavaScript and Node.js.">
+  <meta property="og:url" content="https://download-reels.github.io/blog/how-to-download-videos-javascript-nodejs.html">
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4%22/><polyline points=%227 10 12 15 17 10%22/><line x1=%2212%22 x2=%2212%22 y1=%2215%22 y2=%223%22/></svg>">
+  <link rel="stylesheet" href="../css/styles.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "Download Videos & Streams in JavaScript & Node.js",
+    "description": "Tutorial on handling media streams, Fetch API, ReadableStreams, and chunk saving in Node.js and the browser.",
+    "author": {
+      "@type": "Organization",
+      "name": "Download Reels Engineering"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Download Reels",
+      "url": "https://download-reels.github.io/"
+    },
+    "datePublished": "2026-10-31",
+    "dateModified": "2026-10-31",
+    "mainEntityOfPage": "https://download-reels.github.io/blog/how-to-download-videos-javascript-nodejs.html"
+  }
+  </script>
+</head>
+<body class="bg-background text-foreground antialiased selection:bg-zinc-800 selection:text-zinc-100 min-h-screen flex flex-col">
+
+  <header class="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div class="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+      <a href="../" class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+        </svg>
+        <span class="font-semibold text-sm tracking-tight">Download Reels</span>
+      </a>
+      <div class="flex items-center gap-2">
+        <a href="./" class="h-8 px-2.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition inline-flex items-center gap-1">
+          <span>← All Articles</span>
+        </a>
+        <a href="../" class="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium inline-flex items-center gap-1.5 transition">
+          <span>Web Tool</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 max-w-3xl mx-auto px-4 py-10 w-full">
+    
+    <nav class="flex items-center gap-1.5 text-xs text-muted-foreground font-mono mb-6">
+      <a href="../" class="hover:text-foreground">Home</a>
+      <span>/</span>
+      <a href="./" class="hover:text-foreground">Blog</a>
+      <span>/</span>
+      <span class="text-foreground">JavaScript Downloader</span>
+    </nav>
+
+    <header class="mb-8 border-b border-border pb-6">
+      <div class="inline-flex items-center gap-2 px-2.5 py-0.5 rounded border border-border text-xs font-mono text-muted-foreground mb-3 bg-card">
+        <span>Node.js 18+</span>
+        <span>•</span>
+        <span>Streams API</span>
+        <span>•</span>
+        <span>7 min read</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mb-3">
+        Download Videos & Streams in JavaScript & Node.js (Fetch API & Streams)
+      </h1>
+      <p class="text-muted-foreground text-sm leading-relaxed">
+        Building high-performance video downloaders in JavaScript requires understanding Streams, chunk processing, memory buffering, and CORS restrictions. Here is how to implement client-side and server-side video saving.
+      </p>
+    </header>
+
+    <div class="rounded-lg border border-border bg-card p-4 mb-8 flex items-center justify-between gap-3 text-xs">
+      <div>
+        <span class="font-medium text-foreground">Need a fast client-side downloader?</span>
+        <p class="text-muted-foreground">Download Reels runs pure client-side resolvers right in your browser.</p>
+      </div>
+      <a href="../" class="h-8 px-3 rounded-md bg-secondary text-foreground hover:bg-accent font-medium inline-flex items-center gap-1 transition flex-shrink-0">
+        Try Online Tool →
+      </a>
+    </div>
+
+    <article class="space-y-8 text-sm leading-relaxed text-zinc-300">
+
+      <section>
+        <h2 class="text-lg font-semibold text-foreground mb-3">1. Client-Side Browser Streaming with Fetch & Blob</h2>
+        <p class="mb-3">
+          In browser environments, downloading a large video file into memory via <code>await response.blob()</code> can freeze the UI or exhaust mobile memory. Using <code>response.body.getReader()</code> provides progressive download feedback:
+        </p>
+        <div class="p-4 rounded-md bg-zinc-950 border border-border font-mono text-xs text-zinc-200 overflow-x-auto leading-5">
+<pre><code>async function downloadVideoWithProgress(videoUrl, filename = "video.mp4") {
+  const response = await fetch(videoUrl);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+  const contentLength = response.headers.get("content-length");
+  const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
+  
+  const reader = response.body.getReader();
+  const chunks = [];
+  let receivedBytes = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    chunks.push(value);
+    receivedBytes += value.length;
+
+    if (totalBytes > 0) {
+      const percent = Math.round((receivedBytes / totalBytes) * 100);
+      console.log(`Progress: ${percent}%`);
+    }
+  }
+
+  // Create Blob URL and trigger browser save
+  const blob = new Blob(chunks, { type: "video/mp4" });
+  const downloadUrl = URL.createObjectURL(blob);
+  
+  const a = document.createElement("a");
+  a.href = downloadUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  
+  setTimeout(() => URL.revokeObjectURL(downloadUrl), 5000);
+}</code></pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-foreground mb-3">2. Node.js Stream Piping with pipeline()</h2>
+        <p class="mb-3">
+          On the backend with Node.js, never buffer video files in memory. Use <code>stream/promises</code> pipeline to stream directly from the HTTP socket to the filesystem:
+        </p>
+        <div class="p-4 rounded-md bg-zinc-950 border border-border font-mono text-xs text-zinc-200 overflow-x-auto leading-5">
+<pre><code>import fs from 'node:fs';
+import { pipeline } from 'node:stream/promises';
+import { Readable } from 'node:stream';
+
+async function streamVideoToFile(videoUrl, outputPath) {
+  const response = await fetch(videoUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36'
+    }
+  });
+
+  if (!response.ok) throw new Error(`Fetch failed with status ${response.status}`);
+
+  // Convert Web ReadableStream to Node.js Readable stream
+  const nodeStream = Readable.fromWeb(response.body);
+  const fileWriter = fs.createWriteStream(outputPath);
+
+  await pipeline(nodeStream, fileWriter);
+  console.log(`✅ Saved video to ${outputPath}`);
+}
+
+// Example usage:
+streamVideoToFile('https://example.com/stream.mp4', './output.mp4');</code></pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="text-lg font-semibold text-foreground mb-3">3. Overcoming CORS in Static Frontends</h2>
+        <p class="mb-3">
+          Browser frontends hosted on static servers (like GitHub Pages) cannot make direct requests to Instagram or Facebook video endpoints because those servers do not emit <code>Access-Control-Allow-Origin: *</code>.
+        </p>
+        <p class="mb-3">
+          Solutions for production:
+        </p>
+        <ul class="list-disc list-inside space-y-1.5 text-zinc-400">
+          <li><strong>Direct CORS APIs:</strong> APIs like TikWM (TikTok) and Piped (YouTube) provide CORS-friendly streaming endpoints.</li>
+          <li><strong>Serverless Edge Proxies:</strong> Deploy a Cloudflare Worker or Vercel Edge Function with custom CORS headers to stream video headers directly.</li>
+        </ul>
+      </section>
+
+      <section class="border-t border-border pt-6 mt-8">
+        <h3 class="text-sm font-semibold text-foreground mb-3">Related Guides:</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <a href="download-videos-golang.html" class="p-3 rounded-md border border-border bg-card hover:bg-accent block transition">
+            <p class="font-medium text-foreground">Golang Concurrent Video Downloader</p>
+            <p class="text-muted-foreground mt-0.5">High-speed chunk streaming with Go.</p>
+          </a>
+          <a href="ffmpeg-video-encoding-guide.html" class="p-3 rounded-md border border-border bg-card hover:bg-accent block transition">
+            <p class="font-medium text-foreground">FFmpeg Transcoding & Encoding</p>
+            <p class="text-muted-foreground mt-0.5">Mux and compress video files.</p>
+          </a>
+        </div>
+      </section>
+
+    </article>
+  </main>
+
+  <footer class="border-t border-border py-6 text-xs text-muted-foreground mt-12">
+    <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+      <p>Download Reels — Open-Source Video Knowledge Base</p>
+      <a href="../" class="hover:text-foreground">Back to Web Downloader</a>
+    </div>
+  </footer>
+
+</body>
+</html>

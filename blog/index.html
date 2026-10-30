@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Engineering Blog & Guides — Download Reels & Video Extraction</title>
+  <meta name="description" content="Technical developer guides on downloading reels, shorts, and video streams using Python, JavaScript, Golang, Rust, FFmpeg, and yt-dlp. Master video processing and Video SEO.">
+  <meta name="keywords" content="download reels python, javascript video downloader, golang video stream, rust media scraper, ffmpeg video encoding, yt-dlp cheatsheet, video seo google ranking">
+  <link rel="canonical" href="https://download-reels.github.io/blog/">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+
+  <!-- OpenGraph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Download Reels">
+  <meta property="og:title" content="Engineering Blog & Guides — Video Extraction, Encoding & SEO">
+  <meta property="og:description" content="Deep-dive tutorials on downloading reels and shorts using Python, JS, Go, Rust, FFmpeg, and ranking videos on Google.">
+  <meta property="og:url" content="https://download-reels.github.io/blog/">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Engineering Blog & Guides — Download Reels">
+  <meta name="twitter:description" content="Deep-dive tutorials on video extraction, encoding pipelines, and SEO.">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4%22/><polyline points=%227 10 12 15 17 10%22/><line x1=%2212%22 x2=%2212%22 y1=%2215%22 y2=%223%22/></svg>">
+  
+  <link rel="stylesheet" href="../css/styles.css">
+
+  <!-- JSON-LD Breadcrumbs -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://download-reels.github.io/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Blog",
+        "item": "https://download-reels.github.io/blog/"
+      }
+    ]
+  }
+  </script>
+</head>
+<body class="bg-background text-foreground antialiased selection:bg-zinc-800 selection:text-zinc-100 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+      <a href="../" class="flex items-center gap-2">
+        <svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+        </svg>
+        <span class="font-semibold text-sm tracking-tight">Download Reels</span>
+        <span class="ml-1 rounded border border-border px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground">Engineering</span>
+      </a>
+
+      <div class="flex items-center gap-2">
+        <a href="../" class="h-8 px-3 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition inline-flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+          </svg>
+          <span>Web Tool</span>
+        </a>
+        <a href="https://github.com/download-reels/download-reels.github.io" target="_blank" rel="noopener noreferrer" class="h-8 w-8 rounded-md border border-border bg-card hover:bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center transition" title="GitHub Repository">
+          <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-5xl mx-auto px-4 py-12 w-full">
+    
+    <!-- Hero Header -->
+    <div class="mb-12 border-b border-border pb-8">
+      <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border text-xs text-muted-foreground font-mono mb-4 bg-card">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span>Developer Knowledge Base</span>
+      </div>
+      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-foreground mb-3">
+        Video Extraction, Encoding & SEO Engineering
+      </h1>
+      <p class="text-muted-foreground text-sm sm:text-base max-w-2xl leading-relaxed">
+        Production-tested tutorials and architectural guides on downloading Reels, Shorts, and video streams across Python, JavaScript, Golang, Rust, and FFmpeg, along with high-impact Video SEO tactics.
+      </p>
+    </div>
+
+    <!-- Featured Tool Callout Banner -->
+    <div class="rounded-lg border border-border bg-card p-5 mb-10 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div>
+        <h2 class="text-sm font-semibold text-foreground">Need a fast online downloader without writing code?</h2>
+        <p class="text-xs text-muted-foreground">Use our universal web tool to download Instagram Reels, TikTok, YouTube Shorts, and X clips instantly.</p>
+      </div>
+      <a href="../" class="flex-shrink-0 h-9 px-4 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium inline-flex items-center gap-2 transition">
+        <span>Launch Downloader</span>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+      </a>
+    </div>
+
+    <!-- Articles Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+      <!-- 1. Python -->
+      <article class="rounded-lg border border-border bg-card p-6 flex flex-col justify-between hover:border-zinc-700 transition">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-3">
+            <span class="px-2 py-0.5 rounded bg-secondary text-foreground">Python</span>
+            <span>• 8 min read</span>
+          </div>
+          <h2 class="text-lg font-semibold text-foreground mb-2 hover:text-zinc-300">
+            <a href="how-to-download-reels-python.html">How to Download Reels & Shorts with Python (yt-dlp, Instaloader & Async)</a>
+          </h2>
+          <p class="text-xs text-muted-foreground leading-relaxed mb-4">
+            Learn how to extract watermark-free Instagram Reels, TikToks, and YouTube Shorts using Python scripts, yt-dlp API, and concurrent thread pools.
+          </p>
+        </div>
+        <a href="how-to-download-reels-python.html" class="inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline">
+          Read Guide <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </a>
+      </article>
+
+      <!-- 2. JavaScript / Node.js -->
+      <article class="rounded-lg border border-border bg-card p-6 flex flex-col justify-between hover:border-zinc-700 transition">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-3">
+            <span class="px-2 py-0.5 rounded bg-secondary text-foreground">JavaScript</span>
+            <span>• 7 min read</span>
+          </div>
+          <h2 class="text-lg font-semibold text-foreground mb-2 hover:text-zinc-300">
+            <a href="how-to-download-videos-javascript-nodejs.html">Download Videos & Streams in JavaScript & Node.js (Fetch API & Streams)</a>
+          </h2>
+          <p class="text-xs text-muted-foreground leading-relaxed mb-4">
+            Build browser and Node.js video downloaders using Fetch Streams, piped chunk processing, m3u8 HLS decoders, and blob savers.
+          </p>
+        </div>
+        <a href="how-to-download-videos-javascript-nodejs.html" class="inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline">
+          Read Guide <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </a>
+      </article>
+
+      <!-- 3. Golang -->
+      <article class="rounded-lg border border-border bg-card p-6 flex flex-col justify-between hover:border-zinc-700 transition">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-3">
+            <span class="px-2 py-0.5 rounded bg-secondary text-foreground">Golang</span>
+            <span>• 10 min read</span>
+          </div>
+          <h2 class="text-lg font-semibold text-foreground mb-2 hover:text-zinc-300">
+            <a href="download-videos-golang.html">High-Throughput Concurrent Video Downloader in Go (Goroutines & Range Headers)</a>
+          </h2>
+          <p class="text-xs text-muted-foreground leading-relaxed mb-4">
+            Architect a blazing-fast multi-part video downloader in Go utilizing worker pools, HTTP chunk ranges, and zero-allocation IO copying.
+          </p>
+        </div>
+        <a href="download-videos-golang.html" class="inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline">
+          Read Guide <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </a>
+      </article>
+
+      <!-- 4. Rust -->
+      <article class="rounded-lg border border-border bg-card p-6 flex flex-col justify-between hover:border-zinc-700 transition">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-3">
+            <span class="px-2 py-0.5 rounded bg-secondary text-foreground">Rust</span>
+            <span>• 9 min read</span>
+          </div>
+          <h2 class="text-lg font-semibold text-foreground mb-2 hover:text-zinc-300">
+            <a href="download-reels-rust.html">Ultra-Fast Media Scraping & Video Extraction in Rust (Tokio & Reqwest)</a>
+          </h2>
+          <p class="text-xs text-muted-foreground leading-relaxed mb-4">
+            Harness Rust's memory safety and asynchronous runtime to scrape video metadata and stream large MP4 payloads with zero memory leaks.
+          </p>
+        </div>
+        <a href="download-reels-rust.html" class="inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline">
+          Read Guide <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </a>
+      </article>
+
+      <!-- 5. FFmpeg -->
+      <article class="rounded-lg border border-border bg-card p-6 flex flex-col justify-between hover:border-zinc-700 transition">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-3">
+            <span class="px-2 py-0.5 rounded bg-secondary text-foreground">FFmpeg</span>
+            <span>• 12 min read</span>
+          </div>
+          <h2 class="text-lg font-semibold text-foreground mb-2 hover:text-zinc-300">
+            <a href="ffmpeg-video-encoding-guide.html">The Ultimate FFmpeg Cheatsheet: Transcoding, Muxing & Lossless Compression</a>
+          </h2>
+          <p class="text-xs text-muted-foreground leading-relaxed mb-4">
+            Master video and audio encoding: convert H.264/H.265 to AV1, mux separate video/audio tracks, trim reels, and compress clips for web publishing.
+          </p>
+        </div>
+        <a href="ffmpeg-video-encoding-guide.html" class="inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline">
+          Read Guide <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </a>
+      </article>
+
+      <!-- 6. yt-dlp -->
+      <article class="rounded-lg border border-border bg-card p-6 flex flex-col justify-between hover:border-zinc-700 transition">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-3">
+            <span class="px-2 py-0.5 rounded bg-secondary text-foreground">CLI / yt-dlp</span>
+            <span>• 10 min read</span>
+          </div>
+          <h2 class="text-lg font-semibold text-foreground mb-2 hover:text-zinc-300">
+            <a href="youtube-dl-ytdlp-cli-guide.html">Mastering yt-dlp & youtube-dl: Complete CLI Cheatsheet & Automation</a>
+          </h2>
+          <p class="text-xs text-muted-foreground leading-relaxed mb-4">
+            Comprehensive manual for yt-dlp: custom format selectors (`-f bv*+ba`), subtitle extraction, cookie authentication, and batch shell scripts.
+          </p>
+        </div>
+        <a href="youtube-dl-ytdlp-cli-guide.html" class="inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline">
+          Read Guide <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </a>
+      </article>
+
+      <!-- 7. Video SEO -->
+      <article class="rounded-lg border border-border bg-card p-6 flex flex-col justify-between hover:border-zinc-700 transition md:col-span-2">
+        <div>
+          <div class="flex items-center gap-2 text-xs font-mono text-muted-foreground mb-3">
+            <span class="px-2 py-0.5 rounded bg-secondary text-foreground">SEO & Growth</span>
+            <span>• 11 min read</span>
+          </div>
+          <h2 class="text-lg font-semibold text-foreground mb-2 hover:text-zinc-300">
+            <a href="video-seo-ranking-guide.html">Video SEO Masterclass: How to Rank Reels, Shorts & Video Tools #1 on Google</a>
+          </h2>
+          <p class="text-xs text-muted-foreground leading-relaxed mb-4">
+            The definitive blueprint to ranking video utilities and short-form content on Google Search and Discover. Includes Schema.org markup, Core Web Vitals optimization, and keyword targeting.
+          </p>
+        </div>
+        <a href="video-seo-ranking-guide.html" class="inline-flex items-center gap-1.5 text-xs font-medium text-foreground hover:underline">
+          Read Guide <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+        </a>
+      </article>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-border py-8 text-xs text-muted-foreground mt-16">
+    <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div>
+        <p class="text-foreground font-medium mb-1">Download Reels — Developer & Engineering Hub</p>
+        <p>Free open-source tools & developer guides for video extraction and encoding.</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="../" class="hover:text-foreground transition">Downloader Tool</a>
+        <a href="./" class="hover:text-foreground transition">Blog</a>
+        <a href="https://github.com/download-reels/download-reels.github.io" target="_blank" rel="noopener noreferrer" class="hover:text-foreground transition">GitHub</a>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

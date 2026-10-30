@@ -1,0 +1,16 @@
+# Robots.txt for https://download-reels.github.io/
+User-agent: *
+Allow: /
+
+# Fast crawling for major search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+# Sitemap location
+Sitemap: https://download-reels.github.io/sitemap.xml
