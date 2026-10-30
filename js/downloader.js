@@ -383,10 +383,10 @@ class DownloaderEngine {
               ext: "m4a",
               isAudio: true
             });
-          } else if (formats.length > 0) {
-            // Audio from video stream
+          } else if (formats.length > 0 && !formats[0].videoOnly) {
+            // Muxed video stream already contains full audio: expose client FFmpeg MP3 options
             formats.push({
-              label: "MP3 Audio (320 kbps HQ Extracted)",
+              label: "MP3 Audio (320 kbps Ultra HQ)",
               url: formats[0].url,
               quality: "320kbps MP3",
               ext: "mp3",
@@ -394,9 +394,22 @@ class DownloaderEngine {
               bitrate: "320k",
               needsConversion: true
             });
+            formats.push({
+              label: "MP3 Audio (192 kbps Standard)",
+              url: formats[0].url,
+              quality: "192kbps MP3",
+              ext: "mp3",
+              isAudio: true,
+              bitrate: "192k",
+              needsConversion: true
+            });
           }
 
           if (formats.length > 0) {
+            const audioSourceUrl = data.audioStreams && data.audioStreams.length > 0
+              ? data.audioStreams[0].url
+              : (!formats[0].videoOnly ? formats[0].url : null);
+
             return {
               status: "success",
               platform: "youtube",
@@ -407,7 +420,7 @@ class DownloaderEngine {
               thumbnailUrl: data.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
               duration: data.duration,
               videoUrl: formats[0].url,
-              audioUrl: data.audioStreams && data.audioStreams.length > 0 ? data.audioStreams[0].url : null,
+              audioUrl: audioSourceUrl,
               formats: formats
             };
           }
@@ -438,6 +451,32 @@ class DownloaderEngine {
 
     const data = await res.json();
     if (data.error) throw new Error(data.error);
+
+    // If YouTube stream returned without explicit audio/MP3 formats, synthesize them from muxed stream
+    if (data && data.formats && data.platform === "youtube") {
+      const hasAudioFmt = data.formats.some(f => f.isAudio || f.ext === "mp3");
+      if (!hasAudioFmt && data.formats.length > 0 && !data.formats[0].videoOnly) {
+        data.formats.push({
+          label: "MP3 Audio (320 kbps Ultra HQ)",
+          url: data.formats[0].url,
+          quality: "320kbps MP3",
+          ext: "mp3",
+          isAudio: true,
+          bitrate: "320k",
+          needsConversion: true
+        });
+        data.formats.push({
+          label: "MP3 Audio (192 kbps Standard)",
+          url: data.formats[0].url,
+          quality: "192kbps MP3",
+          ext: "mp3",
+          isAudio: true,
+          bitrate: "192k",
+          needsConversion: true
+        });
+        data.audioUrl = data.audioUrl || data.formats[0].url;
+      }
+    }
 
     return data;
   }

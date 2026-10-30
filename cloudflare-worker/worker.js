@@ -358,7 +358,32 @@ function buildYouTubeResult(videoId, data, thumbnailUrl) {
       ext: audioExt,
       isAudio: true,
     });
+  } else if (formats.length > 0 && !formats[0].videoOnly) {
+    // When YouTube / Piped only returns the progressive 360p stream, audio is present inside the video container.
+    // Expose FFmpeg client-side conversion pills for MP3 extraction.
+    formats.push({
+      label: "MP3 Audio (320 kbps Ultra HQ)",
+      url: formats[0].url,
+      quality: "320kbps MP3",
+      ext: "mp3",
+      isAudio: true,
+      bitrate: "320k",
+      needsConversion: true,
+    });
+    formats.push({
+      label: "MP3 Audio (192 kbps Standard)",
+      url: formats[0].url,
+      quality: "192kbps MP3",
+      ext: "mp3",
+      isAudio: true,
+      bitrate: "192k",
+      needsConversion: true,
+    });
   }
+
+  const audioSourceUrl = (data.audioStreams && data.audioStreams.length > 0)
+    ? data.audioStreams[0].url
+    : (formats.length > 0 && !formats[0].videoOnly ? formats[0].url : null);
 
   return {
     status: "success",
@@ -370,7 +395,7 @@ function buildYouTubeResult(videoId, data, thumbnailUrl) {
     thumbnailUrl: data.thumbnailUrl || thumbnailUrl,
     duration: data.duration,
     videoUrl: formats[0]?.url || null,
-    audioUrl: data.audioStreams?.[0]?.url || null,
+    audioUrl: audioSourceUrl,
     formats,
     source: "piped",
   };
