@@ -5,17 +5,19 @@
 class DownloaderEngine {
   constructor() {
     this.defaultSettings = {
-      // User can point to their own Cloudflare Worker or Python backend or Cobalt
+      // User can point to their own Cloudflare Worker or Python backend
       apiUrl: localStorage.getItem("clipper_api_url") || "",
-      apiMode: localStorage.getItem("clipper_api_mode") || "smart", // "smart", "worker", "cobalt", "custom"
+      apiMode: localStorage.getItem("clipper_api_mode") || "smart", // "smart", "worker", "custom"
       autoDownload: localStorage.getItem("clipper_auto_download") === "true",
       maxRetries: 2
     };
 
-    // Built-in public fallback instances
-    this.cobaltInstances = [
-      "https://cobalt.canine.tools"
-    ];
+    // Platform-specific error messages for unsupported client-side platforms
+    this.backendRequiredMessages = {
+      instagram: "Instagram requires a backend proxy to bypass CORS restrictions. Deploy the included Cloudflare Worker (free) and configure it in Settings ⚙️.",
+      facebook: "Facebook requires a backend proxy to bypass CORS restrictions. Deploy the included Cloudflare Worker (free) and configure it in Settings ⚙️.",
+      reddit: "Reddit video extraction requires a backend proxy. Deploy the included Cloudflare Worker (free) and configure it in Settings ⚙️."
+    };
   }
 
   /**
@@ -74,24 +76,16 @@ class DownloaderEngine {
       }
     }
 
-    // 4. Cobalt Resolver Strategy (for Instagram Reels, YouTube Shorts, Reddit, Facebook)
-    onProgress({ stage: "resolving", message: `Resolving ${platform ? platform.name : "video"} stream...` });
-    try {
-      return await this.resolveViaCobalt(cleanUrl);
-    } catch (cobaltErr) {
-      console.warn("Cobalt resolution error:", cobaltErr);
-      
-      // If Instagram failed due to anti-bot restrictions, throw informative error with instructions
-      if (platform && platform.id === "instagram") {
-        throw new Error(
-          "Instagram has strict anti-bot protections. To download Instagram Reels seamlessly, you can connect our free 1-click Cloudflare Worker or Python backend in the Settings menu (⚙️)!"
-        );
-      }
-      
-      throw new Error(
-        cobaltErr.message || `Unable to fetch media from this link. Please check if the post is public and available.`
-      );
+    // 4. No client-side resolver available — show platform-specific guidance
+    const platformId = platform ? platform.id : "unknown";
+    const backendMsg = this.backendRequiredMessages[platformId];
+    if (backendMsg) {
+      throw new Error(backendMsg);
     }
+
+    throw new Error(
+      `No client-side resolver available for this platform. Configure a backend proxy in Settings ⚙️ or check that the URL is a valid public video link.`
+    );
   }
 
   /**
@@ -353,84 +347,6 @@ class DownloaderEngine {
     if (data.error) throw new Error(data.error);
 
     return data;
-  }
-
-  /**
-   * Resolves via Cobalt API specification
-   */
-  async resolveViaCobalt(url) {
-    let lastError = null;
-
-    // Try available instances
-    for (const endpoint of this.cobaltInstances) {
-      try {
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            url: url,
-            vQuality: "1080",
-            filenameStyle: "pretty"
-          })
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          const code = errData.error?.code || "";
-          if (code.includes("jwt") || code.includes("auth") || code.includes("turnstile")) {
-            throw new Error("Public extraction server required authentication. Please configure a custom backend in Engine Settings (⚙️).");
-          }
-          throw new Error(code || `HTTP ${res.status}`);
-        }
-
-        const data = await res.json();
-
-        // Handle Cobalt stream/redirect response
-        if (data.status === "redirect" || data.status === "tunnel" || data.url) {
-          const mediaUrl = data.url;
-          return {
-            status: "success",
-            platform: "generic",
-            title: data.filename || "Downloaded Video",
-            author: "Media Creator",
-            thumbnailUrl: null,
-            videoUrl: mediaUrl,
-            audioUrl: null,
-            formats: [
-              { label: "HD MP4 Video", url: mediaUrl, quality: "1080p/Best", ext: "mp4" }
-            ]
-          };
-        }
-
-        if (data.status === "picker" && Array.isArray(data.picker)) {
-          const formats = data.picker.map((item, idx) => ({
-            label: item.type === "photo" ? `Photo ${idx + 1}` : `Video Clip ${idx + 1}`,
-            url: item.url,
-            quality: "Original",
-            ext: item.type === "photo" ? "jpg" : "mp4"
-          }));
-
-          return {
-            status: "success",
-            platform: "generic",
-            title: "Media Carousel",
-            author: "Media Creator",
-            thumbnailUrl: data.picker[0]?.thumb || null,
-            videoUrl: data.picker[0]?.url,
-            formats: formats
-          };
-        }
-
-        throw new Error(data.error?.code || "Cobalt returned unknown status");
-      } catch (err) {
-        lastError = err;
-      }
-    }
-
-    throw lastError || new Error("All public extraction endpoints are currently busy.");
   }
 
   /**

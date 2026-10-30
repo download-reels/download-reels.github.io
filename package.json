@@ -1,0 +1,23 @@
+{
+  "name": "clipper",
+  "version": "1.0.0",
+  "description": "> A sleek, high-speed, watermark-free video and reel downloader hosted at [**download-reels.github.io**](https://download-reels.github.io/).",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/download-reels/download-reels.github.io.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/download-reels/download-reels.github.io/issues"
+  },
+  "homepage": "https://github.com/download-reels/download-reels.github.io#readme",
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}
