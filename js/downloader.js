@@ -148,13 +148,22 @@ class DownloaderEngine {
       });
     }
 
-    // Audio / Music track
+    // Audio / Music tracks (320kbps & original)
     if (d.music) {
       formats.push({
-        label: "Audio Track (MP3)",
+        label: "MP3 Audio (320 kbps Ultra HQ)",
+        url: d.music,
+        quality: "320kbps MP3",
+        ext: "mp3",
+        isAudio: true,
+        bitrate: "320k"
+      });
+      formats.push({
+        label: "Audio Track (Original MP3)",
         url: d.music,
         quality: "Audio MP3",
-        ext: "mp3"
+        ext: "mp3",
+        isAudio: true
       });
     }
 
@@ -266,40 +275,68 @@ class DownloaderEngine {
         if (data && data.videoStreams && data.videoStreams.length > 0) {
           const formats = [];
 
-          // Progressive muxed video streams
+          // Progressive muxed video streams & adaptive qualities
+          const seenQualities = new Set();
+          
           data.videoStreams.forEach(s => {
-            if (!s.videoOnly && s.url) {
-              formats.push({
-                label: `MP4 (${s.quality || "360p"})`,
-                url: s.url,
-                quality: s.quality || "Standard",
-                ext: "mp4"
-              });
+            if (s.url) {
+              const qualityStr = s.quality || "360p";
+              const key = `${qualityStr}_${s.format || "mp4"}`;
+              if (!seenQualities.has(key)) {
+                seenQualities.add(key);
+                formats.push({
+                  label: `MP4 (${qualityStr})`,
+                  url: s.url,
+                  quality: qualityStr,
+                  ext: "mp4",
+                  videoOnly: Boolean(s.videoOnly)
+                });
+              }
             }
           });
 
-          // Fallback to all video streams if none muxed
-          if (formats.length === 0) {
-            data.videoStreams.forEach(s => {
-              if (s.url) {
-                formats.push({
-                  label: `${s.format || "MP4"} (${s.quality || "HD"})`,
-                  url: s.url,
-                  quality: s.quality || "HD",
-                  ext: s.format ? s.format.toLowerCase() : "mp4"
-                });
-              }
-            });
-          }
-
-          // Audio streams
+          // Dedicated YouTube to MP3 Converter audio streams (320kbps, 192kbps, original)
           if (data.audioStreams && data.audioStreams.length > 0) {
             const bestAudio = data.audioStreams[0];
+            
+            // 320kbps HQ MP3
             formats.push({
-              label: `Audio (${bestAudio.format || "M4A"} ${bestAudio.quality || ""})`.trim(),
+              label: "MP3 Audio (320 kbps Ultra HQ)",
               url: bestAudio.url,
-              quality: "audio",
-              ext: "mp3"
+              quality: "320kbps MP3",
+              ext: "mp3",
+              isAudio: true,
+              bitrate: "320k"
+            });
+
+            // 192kbps Standard MP3
+            formats.push({
+              label: "MP3 Audio (192 kbps Standard)",
+              url: bestAudio.url,
+              quality: "192kbps MP3",
+              ext: "mp3",
+              isAudio: true,
+              bitrate: "192k"
+            });
+
+            // Original M4A track
+            formats.push({
+              label: `Original Audio (${bestAudio.format || "M4A"})`,
+              url: bestAudio.url,
+              quality: "Original Audio",
+              ext: "m4a",
+              isAudio: true
+            });
+          } else if (formats.length > 0) {
+            // Audio from video stream
+            formats.push({
+              label: "MP3 Audio (320 kbps HQ Extracted)",
+              url: formats[0].url,
+              quality: "320kbps MP3",
+              ext: "mp3",
+              isAudio: true,
+              bitrate: "320k",
+              needsConversion: true
             });
           }
 

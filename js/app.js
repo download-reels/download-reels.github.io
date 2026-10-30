@@ -56,6 +56,21 @@ document.addEventListener("DOMContentLoaded", () => {
   const openPlatformsBtn = document.getElementById("openPlatformsBtn");
   const closePlatformsBtn = document.getElementById("closePlatformsBtn");
 
+  // Conversion Studio Elements
+  const convertModal = document.getElementById("convertModal");
+  const openConvertModalBtn = document.getElementById("openConvertModalBtn");
+  const closeConvertBtn = document.getElementById("closeConvertBtn");
+  const startConvertBtn = document.getElementById("startConvertBtn");
+  const convertFormatSelect = document.getElementById("convertFormatSelect");
+  const convertBitrateGroup = document.getElementById("convertBitrateGroup");
+  const convertBitrateSelect = document.getElementById("convertBitrateSelect");
+  const convertStartTime = document.getElementById("convertStartTime");
+  const convertEndTime = document.getElementById("convertEndTime");
+  const convertProgressGroup = document.getElementById("convertProgressGroup");
+  const convertStatusText = document.getElementById("convertStatusText");
+  const convertPercentText = document.getElementById("convertPercentText");
+  const convertProgressBar = document.getElementById("convertProgressBar");
+
   // Active state
   let currentMedia = null;
   let selectedFormat = null;
@@ -162,6 +177,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Escape") {
       if (!settingsModal.classList.contains("hidden")) {
         settingsModal.classList.add("hidden");
+      } else if (convertModal && !convertModal.classList.contains("hidden")) {
+        convertModal.classList.add("hidden");
       } else if (!qrModal.classList.contains("hidden")) {
         qrModal.classList.add("hidden");
       } else if (!platformsModal.classList.contains("hidden")) {
@@ -447,6 +464,76 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   closeQrBtn.addEventListener("click", () => qrModal.classList.add("hidden"));
+
+  // -------------------------------------------------------------
+  // Client-Side Conversion Studio (FFmpeg WebAssembly)
+  // -------------------------------------------------------------
+
+  if (openConvertModalBtn) {
+    openConvertModalBtn.addEventListener("click", () => {
+      if (!currentMedia) return;
+      convertModal.classList.remove("hidden");
+      convertProgressGroup.classList.add("hidden");
+      startConvertBtn.disabled = false;
+    });
+  }
+
+  if (closeConvertBtn) {
+    closeConvertBtn.addEventListener("click", () => {
+      convertModal.classList.add("hidden");
+    });
+  }
+
+  if (convertFormatSelect) {
+    convertFormatSelect.addEventListener("change", () => {
+      convertBitrateGroup.classList.toggle("hidden", convertFormatSelect.value !== "mp3");
+    });
+  }
+
+  if (startConvertBtn) {
+    startConvertBtn.addEventListener("click", async () => {
+      if (!currentMedia) return;
+      const mediaUrl = selectedFormat?.url || currentMedia.videoUrl;
+      if (!mediaUrl) {
+        showToast("No active media stream found to convert.", "error");
+        return;
+      }
+
+      const format = convertFormatSelect.value;
+      const bitrate = convertBitrateSelect.value;
+      const startTime = convertStartTime.value ? `${convertStartTime.value}` : null;
+      const endTime = convertEndTime.value ? `${convertEndTime.value}` : null;
+
+      convertProgressGroup.classList.remove("hidden");
+      startConvertBtn.disabled = true;
+
+      try {
+        const result = await window.mediaConverterEngine.convert(mediaUrl, {
+          format,
+          bitrate,
+          startTime,
+          endTime
+        }, (p) => {
+          convertStatusText.textContent = p.message;
+          convertPercentText.textContent = `${p.percent}%`;
+          convertProgressBar.style.width = `${p.percent}%`;
+        });
+
+        const cleanTitle = (currentMedia.title || "media").replace(/[^a-zA-Z0-9_-]/g, "_").substring(0, 40);
+        const filename = `${cleanTitle}_converted_${bitrate}.${format}`;
+
+        window.downloaderEngine.triggerDownloadLink(result.url, filename);
+        showToast(`Conversion complete! Saved as ${format.toUpperCase()} (${bitrate}).`, "success");
+        convertModal.classList.add("hidden");
+
+      } catch (err) {
+        console.error(err);
+        showToast("Conversion error: " + (err.message || "Failed in-browser transcode"), "error");
+      } finally {
+        startConvertBtn.disabled = false;
+      }
+    });
+  }
 
   // -------------------------------------------------------------
   // History Management

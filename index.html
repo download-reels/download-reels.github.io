@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Download Reels — Free Online Reel & Video Downloader (No Watermark 1080p)</title>
-  <meta name="description" content="Free online reel and video downloader. Save Instagram Reels, TikTok videos without watermark, YouTube Shorts in 1080p MP4, and X/Twitter clips directly in high quality. Fast, client-side, 100% free with no login.">
-  <meta name="keywords" content="download reels, instagram reel downloader, download instagram reels, tiktok downloader no watermark, download youtube shorts, save reels online, twitter video downloader, mp4 video downloader, free reel saver, reels audio download, 1080p video download, youtube shorts mp4">
+  <title>Download Reels — SaveFrom.net Alternative & YouTube to MP3 Converter (320kbps)</title>
+  <meta name="description" content="Free SaveFrom.net alternative. Download Instagram Reels, TikTok videos without watermarks, YouTube Shorts in 1080p, and convert YouTube to MP3 in 320kbps with in-browser FFmpeg. Zero ads, 100% free.">
+  <meta name="keywords" content="savefrom alternative, savefrom net alternative, savefrom shutdown, youtube to mp3 converter 320kbps, download reels, instagram reel downloader, tiktok downloader no watermark, download youtube shorts, ffmpeg webassembly converter">
   <meta name="author" content="Download Reels">
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <meta name="theme-color" content="#09090b">
@@ -197,12 +197,21 @@
   <main class="max-w-3xl mx-auto px-4 pt-12 pb-20">
     
     <!-- Hero Header -->
-    <div class="text-center space-y-2 mb-8">
+    <div class="text-center space-y-2.5 mb-8">
+      
+      <!-- SaveFrom.net Alternative Badge -->
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-card text-xs text-muted-foreground font-mono mb-1">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span class="text-foreground font-medium">SaveFrom.net Alternative</span>
+        <span class="text-zinc-500">•</span>
+        <span>Ad-Free & 100% Free</span>
+      </div>
+
       <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-        Download Reels & Videos
+        Universal Video Downloader & YouTube to MP3
       </h1>
-      <p class="text-sm text-muted-foreground max-w-lg mx-auto">
-        Fast, clean media extractor for Instagram Reels, TikTok, YouTube Shorts, X/Twitter, and direct MP4 streams.
+      <p class="text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed">
+        Save Instagram Reels, TikTok without watermark, and YouTube videos in up to 1080p MP4. Features built-in <strong class="text-foreground">320kbps MP3 Audio conversion</strong> and client-side FFmpeg processing.
       </p>
     </div>
 
@@ -412,6 +421,18 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
               </svg>
               <span>Download MP4</span>
+            </button>
+
+            <!-- Inline FFmpeg WebAssembly Converter Button -->
+            <button 
+              id="openConvertModalBtn" 
+              class="w-full h-8 rounded-md border border-border bg-secondary hover:bg-accent text-foreground text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer"
+              title="Convert to 320kbps MP3, WAV, WebM, or GIF client-side"
+            >
+              <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              <span>Convert Format / 320k MP3 (Client FFmpeg)</span>
             </button>
 
             <!-- Secondary Actions -->
@@ -673,6 +694,36 @@
         
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
+            <span>Is this a working alternative to SaveFrom.net?</span>
+            <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </summary>
+          <p class="text-muted-foreground mt-2 leading-relaxed">
+            Yes! With SaveFrom.net shutting down and suffering from domain seizures and intrusive adware, Download Reels was created as a clean, open-source replacement. There are 0 ads, 0 popups, no tracking cookies, and full support for 1080p MP4 video and 320kbps MP3 audio downloads.
+          </p>
+        </details>
+
+        <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
+          <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
+            <span>Can I convert YouTube videos and shorts to 320kbps MP3?</span>
+            <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </summary>
+          <p class="text-muted-foreground mt-2 leading-relaxed">
+            Yes. When you paste any YouTube video or short, select the "MP3 Audio (320 kbps Ultra HQ)" pill or click "Convert Format" to encode the stream directly in your browser using our client-side FFmpeg WebAssembly engine.
+          </p>
+        </details>
+
+        <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
+          <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
+            <span>How does the client-side FFmpeg conversion work?</span>
+            <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </summary>
+          <p class="text-muted-foreground mt-2 leading-relaxed">
+            Download Reels loads a WebAssembly compilation of FFmpeg directly inside your web browser. This processes, transcodes, trims, and converts video/audio on your own computer CPU without uploading your files to any remote server, guaranteeing 100% privacy and zero server queues.
+          </p>
+        </details>
+        
+        <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
+          <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
             <span>How do I download Instagram Reels without a watermark?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
@@ -838,6 +889,85 @@
   </div>
 
   <!-- ======================================================== -->
+  <!-- MODAL: FFmpeg Client-Side Conversion Studio              -->
+  <!-- ======================================================== -->
+  <div id="convertModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-lg border border-border bg-background p-6 space-y-4 shadow-xl">
+      <div class="flex items-center justify-between pb-3 border-b border-border">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+          </svg>
+          <h3 class="text-sm font-semibold text-foreground">Client-Side Conversion Studio (FFmpeg)</h3>
+        </div>
+        <button id="closeConvertBtn" class="text-muted-foreground hover:text-foreground p-1">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <p class="text-muted-foreground leading-relaxed">
+          Transcode media directly inside your browser via WebAssembly. Zero files uploaded to any server.
+        </p>
+
+        <!-- Format Selector -->
+        <div>
+          <label class="block font-medium text-foreground mb-1.5">Target Format</label>
+          <select id="convertFormatSelect" class="w-full rounded-md border border-input bg-card px-3 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring">
+            <option value="mp3">MP3 Audio (YouTube to MP3)</option>
+            <option value="wav">WAV Audio (Lossless PCM)</option>
+            <option value="mp4">MP4 Video (H.264 Transcoded)</option>
+            <option value="gif">GIF Animated Clip</option>
+          </select>
+        </div>
+
+        <!-- Audio Bitrate (visible for MP3) -->
+        <div id="convertBitrateGroup">
+          <label class="block font-medium text-foreground mb-1.5">Audio Bitrate</label>
+          <select id="convertBitrateSelect" class="w-full rounded-md border border-input bg-card px-3 py-1.5 text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-ring">
+            <option value="320k" selected>320 kbps (Extreme High Fidelity)</option>
+            <option value="256k">256 kbps (High Quality)</option>
+            <option value="192k">192 kbps (Standard YouTube Bitrate)</option>
+            <option value="128k">128 kbps (Compact)</option>
+          </select>
+        </div>
+
+        <!-- Optional Trim Range -->
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <div>
+            <label class="block font-medium text-foreground mb-1">Start Trim (sec)</label>
+            <input id="convertStartTime" type="number" min="0" placeholder="0" class="w-full rounded-md border border-input bg-card px-3 py-1.5 text-xs text-foreground font-mono focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-medium text-foreground mb-1">End Trim (sec)</label>
+            <input id="convertEndTime" type="number" min="0" placeholder="Full" class="w-full rounded-md border border-input bg-card px-3 py-1.5 text-xs text-foreground font-mono focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Conversion Progress / Status -->
+        <div id="convertProgressGroup" class="hidden rounded-md border border-border bg-card p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <span id="convertStatusText" class="font-mono text-[11px] text-muted-foreground">Initializing FFmpeg...</span>
+            <span id="convertPercentText" class="font-mono text-[11px] text-foreground font-semibold">0%</span>
+          </div>
+          <div class="w-full bg-secondary rounded-full h-1.5 overflow-hidden">
+            <div id="convertProgressBar" class="bg-amber-400 h-1.5 rounded-full transition-all duration-300" style="width: 0%;"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="pt-3 border-t border-border flex items-center justify-between">
+        <span class="text-[10px] text-muted-foreground font-mono">100% In-Browser</span>
+        <button id="startConvertBtn" class="h-8 px-4 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium flex items-center gap-1.5 transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+          <span>Start Conversion</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
   <!-- MODAL: Mobile QR Code (shadcn Dialog)                    -->
   <!-- ======================================================== -->
   <div id="qrModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -901,6 +1031,7 @@
   <!-- Scripts -->
   <script src="js/qrcode.min.js"></script>
   <script src="js/platforms.js"></script>
+  <script src="js/converter.js"></script>
   <script src="js/downloader.js"></script>
   <script src="js/app.js"></script>
 
