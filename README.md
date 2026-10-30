@@ -1,16 +1,16 @@
-# ⚡ Clipper — Universal Reel & Video Downloader
+# ⚡ Download Reels — Universal Reel & Video Downloader
 
-> A sleek, high-speed, watermark-free video and reel downloader built to be hosted directly on **GitHub Pages**.
+> A sleek, high-speed, watermark-free video and reel downloader hosted at [**download-reels.github.io**](https://download-reels.github.io/).
 
-![Clipper Preview](https://raw.githubusercontent.com/lonelywolf/clipper/main/assets/preview.png)
+![Clipper Preview](https://raw.githubusercontent.com/download-reels/download-reels.github.io/main/assets/preview.png)
 
-Clipper allows you to download public reels, shorts, and videos from **Instagram**, **TikTok**, **YouTube Shorts**, **X (Twitter)**, **Reddit**, and direct video files (`.mp4`, `.webm`, `.mov`).
+Download Reels allows you to download public reels, shorts, and videos from **Instagram**, **TikTok**, **YouTube Shorts**, **Facebook**, **X (Twitter)**, **Reddit**, and direct video files (`.mp4`, `.webm`, `.mov`).
 
 ---
 
 ## 🌟 Key Features
 
-- **🚀 Hosted on GitHub Pages**: 100% static frontend — zero compilation, zero heavy node_modules build step required.
+- **🚀 Hosted on GitHub Pages**: 100% static frontend running at `https://download-reels.github.io/` — zero compilation, zero dependencies.
 - **✨ No Watermarks**: Extracts clean original video streams (TikTok HD without watermark).
 - **🎵 MP3 Audio Extraction**: Extract and download audio/music tracks directly from reels.
 - **📱 Mobile QR Code Handoff**: Scan a dynamic QR code on your computer screen with your smartphone camera to save the video directly to your iOS / Android camera roll.
@@ -23,35 +23,33 @@ Clipper allows you to download public reels, shorts, and videos from **Instagram
 
 ---
 
-## 🚀 How to Host on GitHub Pages (Step-by-Step)
+## 🚀 How to Push & Deploy to GitHub Pages
 
-Deploying Clipper to GitHub Pages takes less than 2 minutes:
+Because this repository is named `download-reels.github.io`, GitHub Pages automatically serves it directly at the root domain:
+👉 **`https://download-reels.github.io/`**
 
 ### Step 1: Push Repository to GitHub
 
-If you haven't initialized Git yet:
 ```bash
-git init
-git add .
-git commit -m "Initial commit: Clipper video downloader"
+cd /home/lonelywolf/clipper
+git remote add origin https://github.com/download-reels/download-reels.github.io.git
 git branch -M main
-git remote add origin https://github.com/<YOUR_USERNAME>/clipper.git
 git push -u origin main
 ```
 
 ### Step 2: Enable GitHub Pages
 
-1. Navigate to your repository on GitHub.
+1. Navigate to **[download-reels/download-reels.github.io](https://github.com/download-reels/download-reels.github.io)** on GitHub.
 2. Click **Settings** (top navigation tab).
-3. In the left sidebar, click **Pages** (under the "Code and automation" section).
+3. In the left sidebar, click **Pages** (under *Code and automation*).
 4. Under **Build and deployment** > **Source**:
-   - Select **GitHub Actions** (recommended, uses the included `.github/workflows/deploy.yml`).
+   - Select **GitHub Actions** (recommended, automatically uses `.github/workflows/deploy.yml`).
    - *Or* select **Deploy from a branch** -> branch: `main` -> folder: `/ (root)`.
 5. Click **Save**.
 
-Within 30–60 seconds, your site will be live at:
+Your tool will be live within 60 seconds at:
 ```
-https://<YOUR_USERNAME>.github.io/clipper/
+https://download-reels.github.io/
 ```
 
 ---
@@ -139,3 +137,4 @@ clipper/
 ## ⚖️ Disclaimer
 
 This software is provided for personal archiving and educational fair-use purposes. Please respect the copyright, intellectual property rights, and terms of service of each platform.
+
