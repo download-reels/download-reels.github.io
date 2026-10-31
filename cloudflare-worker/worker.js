@@ -60,7 +60,7 @@ export default {
       }
 
       try {
-        return await proxyMedia(mediaUrl, filename, true);
+        return await proxyMedia(mediaUrl, filename, true, request);
       } catch (err) {
         return jsonResponse({ error: "Stream proxy failed", details: err.message }, 502);
       }
@@ -75,7 +75,7 @@ export default {
       }
 
       try {
-        return await proxyMedia(mediaUrl, filename, true);
+        return await proxyMedia(mediaUrl, filename, true, request);
       } catch (err) {
         return jsonResponse({ error: "Audio proxy failed", details: err.message }, 502);
       }
@@ -87,13 +87,26 @@ export default {
 
 /**
  * Proxy any media URL through this worker with forced download headers
+ * Supports HEAD requests and HTTP Range byte-serving for parallel chunked downloads
  */
-async function proxyMedia(mediaUrl, filename, forceDownload = false) {
+async function proxyMedia(mediaUrl, filename, forceDownload = false, clientRequest = null) {
+  const upstreamHeaders = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Referer": (() => { try { return new URL(mediaUrl).origin; } catch { return "https://www.google.com"; } })(),
+  };
+
+  if (clientRequest) {
+    const rangeHeader = clientRequest.headers.get("Range") || clientRequest.headers.get("range");
+    if (rangeHeader) {
+      upstreamHeaders["Range"] = rangeHeader;
+    }
+  }
+
+  const method = clientRequest && clientRequest.method === "HEAD" ? "HEAD" : "GET";
+
   const response = await fetch(mediaUrl, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      "Referer": (() => { try { return new URL(mediaUrl).origin; } catch { return "https://www.google.com"; } })(),
-    },
+    method,
+    headers: upstreamHeaders,
   });
 
   const newHeaders = new Headers();
@@ -112,7 +125,7 @@ async function proxyMedia(mediaUrl, filename, forceDownload = false) {
     newHeaders.set("Content-Disposition", `attachment; filename="${filename}"`);
   }
 
-  return new Response(response.body, {
+  return new Response(method === "HEAD" ? null : response.body, {
     status: response.status,
     headers: newHeaders,
   });
@@ -845,8 +858,9 @@ function decodeHtml(str) {
 function getCorsHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, Range",
+    "Access-Control-Expose-Headers": "Content-Length, Content-Range, Accept-Ranges",
     "Access-Control-Max-Age": "86400",
   };
 }

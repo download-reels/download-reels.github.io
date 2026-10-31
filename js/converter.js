@@ -513,9 +513,10 @@ class MediaConverterEngine {
         try {
           await ffmpeg.run(
             "-ss", String(startSec),
-            "-to", String(endSec),
             "-i", inSource,
+            "-t", String(duration),
             "-c", "copy",
+            "-avoid_negative_ts", "make_zero",
             "-movflags", "+faststart",
             outFilename
           );
@@ -523,10 +524,11 @@ class MediaConverterEngine {
           console.warn(`Fast stream copy failed for segment ${i + 1}, using ultrafast re-encode:`, fastErr);
           await ffmpeg.run(
             "-ss", String(startSec),
-            "-to", String(endSec),
             "-i", inSource,
+            "-t", String(duration),
             "-c:v", "libx264",
             "-preset", "ultrafast",
+            "-tune", "zerolatency",
             "-crf", "24",
             "-c:a", "aac",
             "-b:a", "128k",
@@ -536,7 +538,7 @@ class MediaConverterEngine {
         }
       } else {
         // Filter-complex overlay with branding / hook frame
-        const args = ["-ss", String(startSec), "-to", String(endSec), "-i", inSource];
+        const args = ["-ss", String(startSec), "-t", String(duration), "-i", inSource];
         const filterChains = [];
         let curV = "0:v";
         let inIdx = 1;
@@ -567,7 +569,8 @@ class MediaConverterEngine {
           "-map", "0:a?",
           "-c:v", "libx264",
           "-preset", "ultrafast",
-          "-crf", "23",
+          "-tune", "zerolatency",
+          "-crf", "24",
           "-c:a", "aac",
           "-b:a", "128k",
           "-movflags", "+faststart",
@@ -610,6 +613,385 @@ class MediaConverterEngine {
     } catch (_) {}
 
     onProgress({ stage: "ready", percent: 95, message: "All reels sliced successfully!" });
+    return results;
+  }
+
+  /**
+   * Probes a URL for byte-range support and total content length.
+   * Returns { supportsRange: bool, totalBytes: number, effectiveUrl: string }
+   */
+  async probeByteRange(url) {
+    const apiBase = (window.downloaderEngine?.defaultSettings?.apiUrl || "https://clipper-resolver.download-reels.workers.dev").replace(/\/+$/, "");
+
+    let probeUrl = url;
+    if (url.includes("googlevideo.com") && !url.includes("/api/proxy")) {
+      probeUrl = `${apiBase}/api/proxy?url=${encodeURIComponent(url)}`;
+    }
+
+    try {
+      const resp = await fetch(probeUrl, { method: "HEAD", mode: "cors" });
+      const acceptRanges = (resp.headers.get("accept-ranges") || "").toLowerCase();
+      const contentLength = resp.headers.get("content-length");
+      const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
+      const supportsRange = acceptRanges.includes("bytes") && totalBytes > 0;
+      return { supportsRange, totalBytes, effectiveUrl: probeUrl };
+    } catch (_) {
+      return { supportsRange: false, totalBytes: 0, effectiveUrl: probeUrl };
+    }
+  }
+
+  /**
+   * Fetches a byte-range slice of a URL.
+   * byteStart/byteEnd are inclusive byte positions.
+   */
+  async fetchByteRange(effectiveUrl, byteStart, byteEnd) {
+    const resp = await fetch(effectiveUrl, {
+      mode: "cors",
+      headers: { Range: `bytes=${byteStart}-${byteEnd}` }
+    });
+    if (!resp.ok && resp.status !== 206) throw new Error(`Byte-range fetch failed: HTTP ${resp.status}`);
+    const buf = await resp.arrayBuffer();
+    return new Uint8Array(buf);
+  }
+
+  /**
+   * Checks whether an MP4 buffer starts with a faststart `moov` atom in its first 64KB.
+   * If `moov` is at the start, prefix byte-range truncation is 100% valid for FFmpeg.
+   */
+  hasFaststartMoov(bytes) {
+    const limit = Math.min(bytes.length - 4, 65536);
+    for (let i = 0; i < limit; i++) {
+      // 'moov' = 0x6d, 0x6f, 0x6f, 0x76
+      if (bytes[i] === 0x6d && bytes[i + 1] === 0x6f && bytes[i + 2] === 0x6f && bytes[i + 3] === 0x76) {
+        return true;
+      }
+      // If we hit 'mdat' before 'moov', moov is at the end of the file
+      if (bytes[i] === 0x6d && bytes[i + 1] === 0x64 && bytes[i + 2] === 0x61 && bytes[i + 3] === 0x74) {
+        return false;
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Smart video fetcher:
+   * 1. Reuses in-memory cache if the same sourceUrl was already fetched in this session.
+   * 2. Probes HTTP Range support:
+   *    - If supported and video has faststart `moov` + user only needs early segments,
+   *      truncates download to the needed prefix byte range (with 20% safety margin).
+   *    - Downloads using 4 parallel HTTP Range connections to saturate client bandwidth.
+   * 3. Falls back to streaming single-connection download if Range is unsupported.
+   */
+  async fetchSmartVideo(url, segments, options = {}, onProgress = () => {}) {
+    const maxEnd = Math.max(...segments.map(s => this.parseTimeToSeconds(s.end)), 0);
+
+    // Check in-memory session cache
+    if (this._sourceCache && this._sourceCache.url === url && this._sourceCache.coveredUntilSec >= maxEnd) {
+      onProgress({ stage: "cache_hit", percent: 28, message: "Using cached source stream in memory (0ms fetch)..." });
+      return {
+        fullData: this._sourceCache.data,
+        sourceId: this._sourceCache.sourceId,
+        usedByteRange: this._sourceCache.usedByteRange,
+      };
+    }
+
+    onProgress({ stage: "probe", percent: 4, message: "Probing stream & range capabilities..." });
+    const { supportsRange, totalBytes, effectiveUrl } = await this.probeByteRange(url);
+
+    if (supportsRange && totalBytes > 512 * 1024) {
+      try {
+        // Probe first 64KB to check for faststart 'moov' atom
+        const headerProbeEnd = Math.min(65535, totalBytes - 1);
+        const headerBytes = await this.fetchByteRange(effectiveUrl, 0, headerProbeEnd);
+        const isFaststart = this.hasFaststartMoov(headerBytes);
+
+        let targetBytes = totalBytes;
+        let usedByteRange = false;
+        const videoDuration = Number(options.videoDuration) || 0;
+
+        if (isFaststart && videoDuration > 0 && maxEnd > 0 && maxEnd < videoDuration * 0.75 && totalBytes > 3 * 1024 * 1024) {
+          // Only need up to maxEnd + 20% safety margin
+          const ratio = Math.min(1, (maxEnd / videoDuration) * 1.2 + 0.05);
+          if (ratio < 0.8) {
+            targetBytes = Math.min(totalBytes, Math.max(headerBytes.length, Math.ceil(totalBytes * ratio)));
+            usedByteRange = true;
+          }
+        }
+
+        // Download targetBytes across 4 parallel HTTP Range connections
+        const numChunks = targetBytes > 2 * 1024 * 1024 ? 4 : 2;
+        const chunkSize = Math.ceil(targetBytes / numChunks);
+        const chunkProgress = new Array(numChunks).fill(0);
+
+        const pctMsg = usedByteRange
+          ? `Smart Range fetch (${Math.round((targetBytes / totalBytes) * 100)}% of file across ${numChunks} parallel streams)...`
+          : `Parallel download (${numChunks} concurrent streams)...`;
+        onProgress({ stage: "fetch_parallel", percent: 8, message: pctMsg });
+
+        const chunks = await Promise.all(
+          Array.from({ length: numChunks }, async (_, idx) => {
+            const start = idx * chunkSize;
+            const end = Math.min(targetBytes - 1, (idx + 1) * chunkSize - 1);
+            const data = await this.fetchByteRange(effectiveUrl, start, end);
+            chunkProgress[idx] = data.length;
+            const loaded = chunkProgress.reduce((a, b) => a + b, 0);
+            const pct = 8 + Math.round((loaded / targetBytes) * 20);
+            onProgress({
+              stage: "fetch_parallel",
+              percent: Math.min(28, pct),
+              message: `Downloading stream (${(loaded / 1024 / 1024).toFixed(1)} / ${(targetBytes / 1024 / 1024).toFixed(1)} MB)...`
+            });
+            return data;
+          })
+        );
+
+        const totalReceived = chunks.reduce((acc, c) => acc + c.length, 0);
+        const combined = new Uint8Array(totalReceived);
+        let offset = 0;
+        for (const c of chunks) {
+          combined.set(c, offset);
+          offset += c.length;
+        }
+
+        const sourceId = `src_${Date.now()}_${totalReceived}`;
+        this._sourceCache = {
+          url,
+          data: combined,
+          sourceId,
+          usedByteRange,
+          coveredUntilSec: usedByteRange ? maxEnd : Infinity
+        };
+
+        return { fullData: combined, sourceId, usedByteRange };
+      } catch (rangeErr) {
+        console.warn("Parallel range fetch failed, falling back to standard stream download:", rangeErr);
+      }
+    }
+
+    // Standard single-stream fallback
+    const fullData = await this.fetchBufferWithProgress(url, "Source Video", 5, 28, onProgress);
+    const sourceId = `src_${Date.now()}_${fullData.length}`;
+    this._sourceCache = {
+      url,
+      data: fullData,
+      sourceId,
+      usedByteRange: false,
+      coveredUntilSec: Infinity
+    };
+    return { fullData, sourceId, usedByteRange: false };
+  }
+
+  /**
+   * Pre-warms background Web Workers when the Studio modal opens so FFmpeg WASM is
+   * already compiled before the user clicks Export.
+   */
+  prewarmWorkerPool(count = 2) {
+    if (typeof Worker === "undefined") return;
+    const hwCores = Math.max(1, Math.min(6, navigator.hardwareConcurrency || 4));
+    const targetCount = Math.min(count, hwCores);
+    const hasSharedArrayBuffer = typeof window.SharedArrayBuffer !== "undefined";
+    const corePath = hasSharedArrayBuffer
+      ? "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
+      : "https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js";
+
+    const pool = this.getWorkerPool(targetCount);
+    pool.forEach(slot => {
+      if (!slot.prewarmed && !slot.busy) {
+        slot.prewarmed = true;
+        slot.worker.postMessage({ type: "prewarm", payload: { corePath } });
+      }
+    });
+  }
+
+  /**
+   * Acquires or initializes the reusable Web Worker pool (1 worker per CPU core, up to 6).
+   */
+  getWorkerPool(count) {
+    if (!this._workerPool) {
+      this._workerPool = [];
+    }
+    while (this._workerPool.length < count) {
+      this._workerPool.push({
+        worker: new Worker("js/clipper-worker.js"),
+        cachedSourceId: null,
+        busy: false
+      });
+    }
+    return this._workerPool.slice(0, count);
+  }
+
+  /**
+   * Parallel clip batch using a reusable Web Worker Pool — one FFmpeg instance per CPU core.
+   * Falls back to sequential sliceBatch() if Workers are not available.
+   *
+   * @param {string} sourceUrl - Video stream URL
+   * @param {Array<{ label, start, end }>} segments
+   * @param {object} options - { logoBuffer?, logoPosition?, hookBuffer?, hookDuration?, videoDuration? }
+   * @param {function} onProgress - ({ stage, percent, message, currentClip, totalClips, workerStates? }) => void
+   */
+  async sliceBatchParallel(sourceUrl, segments = [], options = {}, onProgress = () => {}) {
+    if (!segments || segments.length === 0) throw new Error("No clip segments specified for export.");
+
+    if (typeof Worker === "undefined") {
+      console.warn("Web Workers not available, falling back to sequential processing.");
+      return this.sliceBatch(sourceUrl, segments, options, onProgress);
+    }
+
+    const totalClips = segments.length;
+    const hwCores = Math.max(1, Math.min(6, navigator.hardwareConcurrency || 4));
+    const maxWorkers = Math.min(totalClips, hwCores);
+
+    onProgress({
+      stage: "init",
+      percent: 2,
+      message: `Engaging ${maxWorkers} CPU core${maxWorkers > 1 ? "s" : ""} for parallel processing...`,
+      totalClips
+    });
+
+    // 1. Smart fetch (in-memory cache + faststart range check + 4x parallel chunk download)
+    const { fullData, sourceId } = await this.fetchSmartVideo(sourceUrl, segments, options, onProgress);
+
+    const hasSharedArrayBuffer = typeof window.SharedArrayBuffer !== "undefined";
+    const corePath = hasSharedArrayBuffer
+      ? "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
+      : "https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js";
+
+    const pool = this.getWorkerPool(maxWorkers);
+
+    // 2. Worker state tracking (one entry per segment)
+    const workerStates = segments.map((seg, i) => ({
+      index: i,
+      label: seg.label || `Reel ${i + 1}`,
+      percent: 0,
+      message: "Queued"
+    }));
+    const results = new Array(totalClips).fill(null);
+    let completedCount = 0;
+
+    const broadcastProgress = () => {
+      const avgSegPct = workerStates.reduce((sum, ws) => sum + ws.percent, 0) / totalClips;
+      const overall = 30 + Math.round((avgSegPct / 100) * 64);
+      onProgress({
+        stage: "parallel_clipping",
+        percent: Math.min(95, overall),
+        message: `Slicing ${totalClips} reel${totalClips > 1 ? "s" : ""} across ${maxWorkers} CPU core${maxWorkers > 1 ? "s" : ""} (${completedCount}/${totalClips} done)...`,
+        currentClip: completedCount,
+        totalClips,
+        activeCores: maxWorkers,
+        workerStates
+      });
+    };
+
+    broadcastProgress();
+
+    // 3. Dispatch segments across reusable worker pool
+    await new Promise((resolve, reject) => {
+      let nextSegmentIndex = 0;
+      let failed = false;
+
+      const assignNextToSlot = (slot) => {
+        if (failed) return;
+        if (nextSegmentIndex >= totalClips) {
+          slot.busy = false;
+          return;
+        }
+
+        const i = nextSegmentIndex++;
+        slot.busy = true;
+        const seg = segments[i];
+        const startSec = this.parseTimeToSeconds(seg.start);
+        const endSec = this.parseTimeToSeconds(seg.end);
+
+        const transferList = [];
+        let videoDataCopy = null;
+
+        // Only copy & transfer videoData if this worker doesn't already have sourceId cached!
+        if (slot.cachedSourceId !== sourceId) {
+          videoDataCopy = new Uint8Array(fullData.length);
+          videoDataCopy.set(fullData);
+          transferList.push(videoDataCopy.buffer);
+        }
+
+        const payload = {
+          segmentIndex: i,
+          startSec,
+          endSec,
+          label: seg.label || `Reel_${i + 1}`,
+          sourceId,
+          videoData: videoDataCopy,
+          corePath,
+        };
+
+        if (options.logoBuffer) {
+          payload.logoBuffer = new Uint8Array(options.logoBuffer);
+          payload.logoPosition = options.logoPosition;
+        }
+        if (options.hookBuffer) {
+          payload.hookBuffer = new Uint8Array(options.hookBuffer);
+          payload.hookDuration = options.hookDuration;
+        }
+
+        slot.worker.onmessage = (evt) => {
+          const { type, segmentIndex, percent, message, exportName, buffer, size } = evt.data;
+
+          if (type === "progress") {
+            workerStates[segmentIndex].percent = percent;
+            workerStates[segmentIndex].message = message;
+            broadcastProgress();
+          } else if (type === "done") {
+            slot.cachedSourceId = sourceId;
+            workerStates[segmentIndex].percent = 100;
+            workerStates[segmentIndex].message = "Done ✓";
+            completedCount++;
+
+            const blob = new Blob([buffer], { type: "video/mp4" });
+            results[segmentIndex] = {
+              name: exportName,
+              blob,
+              url: URL.createObjectURL(blob),
+              size,
+              start: startSec,
+              end: endSec,
+              duration: Math.max(0.5, endSec - startSec),
+            };
+
+            broadcastProgress();
+
+            if (completedCount === totalClips) {
+              slot.busy = false;
+              resolve();
+            } else {
+              assignNextToSlot(slot);
+            }
+          } else if (type === "error") {
+            failed = true;
+            slot.busy = false;
+            reject(new Error(`Reel ${segmentIndex + 1} failed: ${evt.data.message}`));
+          }
+        };
+
+        slot.worker.onerror = (e) => {
+          failed = true;
+          slot.busy = false;
+          reject(new Error(`Worker error on Reel ${i + 1}: ${e.message}`));
+        };
+
+        slot.worker.postMessage({ type: "slice", payload }, transferList);
+      };
+
+      // Kick off all pool workers simultaneously
+      pool.forEach(slot => assignNextToSlot(slot));
+    });
+
+    onProgress({
+      stage: "ready",
+      percent: 96,
+      message: `All ${totalClips} reels processed in parallel!`,
+      totalClips,
+      currentClip: totalClips,
+      activeCores: maxWorkers,
+      workerStates
+    });
     return results;
   }
 

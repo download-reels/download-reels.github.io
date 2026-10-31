@@ -1204,6 +1204,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const clipProgressStatus = document.getElementById("clipProgressStatus");
     const clipProgressPct = document.getElementById("clipProgressPct");
     const clipProgressBar = document.getElementById("clipProgressBar");
+    const clipWorkerStatusGrid = document.getElementById("clipWorkerStatusGrid");
+    const clipCoresBadge = document.getElementById("clipCoresBadge");
+    const burnOverlaysLabel = document.getElementById("burnOverlaysLabel");
+    const burnOverlaysToggle = document.getElementById("burnOverlaysToggle");
     const exportClipsBtn = document.getElementById("exportClipsBtn");
     const exportClipsBtnText = document.getElementById("exportClipsBtnText");
 
@@ -1292,6 +1296,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } else {
         clipHookOverlay.classList.add("hidden");
       }
+      if (typeof updateBurnOverlayUI === "function") updateBurnOverlayUI();
     }
 
     if (enableHookToggle) {
@@ -1363,6 +1368,7 @@ document.addEventListener("DOMContentLoaded", () => {
           logoControlsGroup.classList.add("opacity-50", "pointer-events-none");
           clipLogoOverlay.classList.add("hidden");
         }
+        if (typeof updateBurnOverlayUI === "function") updateBurnOverlayUI();
       });
     }
 
@@ -1387,6 +1393,7 @@ document.addEventListener("DOMContentLoaded", () => {
         reader.onload = () => {
           uploadedLogoBuffer = new Uint8Array(reader.result);
           showToast("Logo watermark ready!");
+          if (typeof updateBurnOverlayUI === "function") updateBurnOverlayUI();
         };
         reader.readAsArrayBuffer(file);
       });
@@ -1442,6 +1449,34 @@ document.addEventListener("DOMContentLoaded", () => {
       return new Uint8Array(ab);
     }
 
+    function updateBurnOverlayUI() {
+      const hasHook = enableHookToggle && enableHookToggle.checked;
+      const hasLogo = enableLogoToggle && enableLogoToggle.checked && uploadedLogoBuffer;
+      const anyOverlay = Boolean(hasHook || hasLogo);
+      const cores = Math.max(1, Math.min(6, navigator.hardwareConcurrency || 4));
+
+      if (burnOverlaysLabel) {
+        if (anyOverlay) {
+          burnOverlaysLabel.classList.remove("hidden");
+          burnOverlaysLabel.classList.add("flex");
+        } else {
+          burnOverlaysLabel.classList.add("hidden");
+          burnOverlaysLabel.classList.remove("flex");
+        }
+      }
+
+      if (clipCoresBadge) {
+        const willBurn = anyOverlay && (!burnOverlaysToggle || burnOverlaysToggle.checked);
+        clipCoresBadge.textContent = willBurn
+          ? `${cores} CPU Cores • Parallel Overlay Encode`
+          : `${cores} CPU Cores • Instant Lossless Cut`;
+      }
+    }
+
+    if (burnOverlaysToggle) {
+      burnOverlaysToggle.addEventListener("change", updateBurnOverlayUI);
+    }
+
     if (openClipModalBtn) {
       openClipModalBtn.addEventListener("click", () => {
         if (!currentMedia) return;
@@ -1455,6 +1490,11 @@ document.addEventListener("DOMContentLoaded", () => {
         clipMiniPlayer.load();
         clipModal.classList.remove("hidden");
 
+        // Pre-warm FFmpeg Web Workers in the background so they are ready before user clicks Export
+        if (window.mediaConverterEngine?.prewarmWorkerPool) {
+          window.mediaConverterEngine.prewarmWorkerPool(2);
+        }
+
         // Initialize default segments if empty
         if (clipSegments.length === 0) {
           clipSegments = [
@@ -1465,6 +1505,7 @@ document.addEventListener("DOMContentLoaded", () => {
         renderSegments();
         updateLogoPosition();
         updateHookBannerPreview();
+        updateBurnOverlayUI();
       });
     }
 
@@ -1631,18 +1672,22 @@ document.addEventListener("DOMContentLoaded", () => {
         clipProgressBox.classList.remove("hidden");
         clipProgressBar.style.width = "5%";
         clipProgressPct.textContent = "5%";
-        clipProgressStatus.textContent = "Preparing client-side studio...";
+        clipProgressStatus.textContent = "Preparing parallel multi-core studio...";
+        if (clipWorkerStatusGrid) clipWorkerStatusGrid.innerHTML = "";
 
         try {
-          // Prepare options (Logo watermark & Hook Frame banner)
-          const sliceOptions = {};
+          // Prepare options (Logo watermark & Hook Frame banner, respecting burnOverlaysToggle)
+          const shouldBurn = !burnOverlaysToggle || burnOverlaysToggle.checked;
+          const sliceOptions = {
+            videoDuration: clipMiniPlayer?.duration || 0,
+          };
 
-          if (enableLogoToggle && enableLogoToggle.checked && uploadedLogoBuffer) {
+          if (shouldBurn && enableLogoToggle && enableLogoToggle.checked && uploadedLogoBuffer) {
             sliceOptions.logoBuffer = uploadedLogoBuffer;
             sliceOptions.logoPosition = logoPositionSelect ? logoPositionSelect.value : "top-right";
           }
 
-          if (enableHookToggle && enableHookToggle.checked) {
+          if (shouldBurn && enableHookToggle && enableHookToggle.checked) {
             if (uploadedHookBuffer) {
               sliceOptions.hookBuffer = uploadedHookBuffer;
             } else {
@@ -1654,10 +1699,24 @@ document.addEventListener("DOMContentLoaded", () => {
             sliceOptions.hookDuration = durVal === "always" ? "always" : parseFloat(durVal);
           }
 
-          const clips = await window.mediaConverterEngine.sliceBatch(streamUrl, clipSegments, sliceOptions, (p) => {
+          const clips = await window.mediaConverterEngine.sliceBatchParallel(streamUrl, clipSegments, sliceOptions, (p) => {
             clipProgressStatus.textContent = p.message;
             clipProgressBar.style.width = `${p.percent}%`;
             clipProgressPct.textContent = `${p.percent}%`;
+
+            if (clipWorkerStatusGrid && p.workerStates) {
+              clipWorkerStatusGrid.innerHTML = p.workerStates.map(ws => `
+                <div class="flex items-center justify-between gap-2 text-[10px] font-mono bg-secondary/40 rounded px-2 py-1">
+                  <span class="truncate text-foreground font-medium">${ws.label || `Reel #${ws.index + 1}`}</span>
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <div class="w-16 bg-secondary rounded-full h-1 overflow-hidden">
+                      <div class="bg-emerald-500 h-1 rounded-full transition-all duration-200" style="width:${ws.percent}%"></div>
+                    </div>
+                    <span class="text-muted-foreground w-8 text-right">${ws.percent}%</span>
+                  </div>
+                </div>
+              `).join("");
+            }
           });
 
           if (clips.length === 1) {
