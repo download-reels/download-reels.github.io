@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#09090b"/>
+      <stop offset="50%" stop-color="#18181b"/>
+      <stop offset="100%" stop-color="#09090b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f43f5e"/>
+      <stop offset="50%" stop-color="#f59e0b"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="60" y="60" width="1080" height="510" rx="28" fill="#121215" stroke="#27272a" stroke-width="2"/>
+  <rect x="60" y="60" width="1080" height="6" fill="url(#accent)"/>
+  <g transform="translate(120, 140)">
+    <rect x="0" y="0" width="340" height="38" rx="19" fill="#18181b" stroke="#3f3f46"/>
+    <circle cx="22" cy="19" r="6" fill="#10b981"/>
+    <text x="40" y="24" fill="#e4e4e7" font-family="monospace" font-size="15" font-weight="bold">100% Client-Side • Zero Ads</text>
+    <text x="0" y="110" fill="#fafafa" font-family="sans-serif" font-size="56" font-weight="800">Download Reels &amp; Video Studio</text>
+    <text x="0" y="170" fill="#a1a1aa" font-family="sans-serif" font-size="26">Instagram Reels • TikTok No Watermark • YouTube 1080p &amp; 320k MP3</text>
+    <text x="0" y="215" fill="#f43f5e" font-family="sans-serif" font-size="24" font-weight="700">+ Multi-Reel Clipper Studio, 1st-Sec Viral Hook Frames &amp; Bulk ZIP</text>
+    <g transform="translate(0, 265)">
+      <rect x="0" y="0" width="210" height="52" rx="10" fill="#27272a"/>
+      <text x="105" y="32" text-anchor="middle" fill="#fafafa" font-family="monospace" font-size="18" font-weight="bold">1080p Full HD</text>
+      <rect x="230" y="0" width="210" height="52" rx="10" fill="#27272a"/>
+      <text x="335" y="32" text-anchor="middle" fill="#fbbf24" font-family="monospace" font-size="18" font-weight="bold">320kbps MP3</text>
+      <rect x="460" y="0" width="240" height="52" rx="10" fill="#27272a"/>
+      <text x="580" y="32" text-anchor="middle" fill="#fb7185" font-family="monospace" font-size="18" font-weight="bold">Multi-Reel Clipper</text>
+      <rect x="720" y="0" width="220" height="52" rx="10" fill="#27272a"/>
+      <text x="830" y="32" text-anchor="middle" fill="#34d399" font-family="monospace" font-size="18" font-weight="bold">FFmpeg WASM</text>
+    </g>
+  </g>
+</svg>

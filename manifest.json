@@ -1,0 +1,16 @@
+{
+  "name": "Download Reels — Universal Video Downloader & Multi-Reel Clipper Studio",
+  "short_name": "Download Reels",
+  "description": "Free SaveFrom.net alternative. Download Instagram Reels, TikTok without watermark, YouTube 1080p & 320kbps MP3, and clip videos into multiple viral reels client-side.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "icons": [
+    {
+      "src": "assets/og-banner.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

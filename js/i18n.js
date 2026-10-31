@@ -101,6 +101,8 @@ const DR_TRANSLATIONS = {
     "faq.a7": "Yes, 100% free and open-source. There is no software to install, no sign-up or registration required, and no tracking cookies stored on your device.",
     "faq.q8": "How do I download reels on iPhone or Android mobile devices?",
     "faq.a8": "You can either open download-reels.github.io in your mobile Safari/Chrome browser, or generate a Mobile QR code on your computer screen using the QR button and scan it with your phone camera to download directly.",
+    "faq.q9": "How do I split a video into multiple reels with a 1st-second hook frame?",
+    "faq.a9": "After resolving any video, click 'Clip into Multiple Reels (Client Studio)'. Add multiple start and end timestamps, optionally enable a 1st-second viral Hook Frame banner or upload your brand logo watermark, and export all reels simultaneously using our multi-core WebAssembly studio.",
     "footer.desc": "Free universal online video downloader for Instagram Reels, TikTok, YouTube Shorts, and X.",
     "footer.platforms": "Platforms",
     "footer.guides": "Engineering Guides",
@@ -914,6 +916,33 @@ class I18nEngine {
 
     // Apply translations across DOM
     this.applyTranslations();
+
+    // Synchronize canonical URL & meta tags for multilingual SEO indexing on homepage
+    try {
+      const path = window.location.pathname || "/";
+      if (path === "/" || path.endsWith("/index.html")) {
+        const canonicalHref = langCode === "en"
+          ? "https://download-reels.github.io/"
+          : `https://download-reels.github.io/?lang=${langCode}`;
+        const canonicalEl = document.querySelector('link[rel="canonical"]');
+        if (canonicalEl) canonicalEl.setAttribute("href", canonicalHref);
+
+        const ogUrlEl = document.querySelector('meta[property="og:url"]');
+        if (ogUrlEl) ogUrlEl.setAttribute("content", canonicalHref);
+
+        if (langCode !== "en") {
+          const localTitle = `${this.t("hero.title")} — ${this.t("hero.badge")} | Download Reels`;
+          const localDesc = this.t("hero.desc").replace(/<[^>]*>/g, "");
+          document.title = localTitle;
+          const descEl = document.querySelector('meta[name="description"]');
+          if (descEl) descEl.setAttribute("content", localDesc);
+          const ogTitleEl = document.querySelector('meta[property="og:title"]');
+          if (ogTitleEl) ogTitleEl.setAttribute("content", localTitle);
+          const ogDescEl = document.querySelector('meta[property="og:description"]');
+          if (ogDescEl) ogDescEl.setAttribute("content", localDesc);
+        }
+      }
+    } catch (_) {}
 
     // Update Language Dropdown button label & active item
     this.updateDropdownUI(langCode);
