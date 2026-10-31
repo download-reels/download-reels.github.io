@@ -917,33 +917,6 @@ class I18nEngine {
     // Apply translations across DOM
     this.applyTranslations();
 
-    // Synchronize canonical URL & meta tags for multilingual SEO indexing on homepage
-    try {
-      const path = window.location.pathname || "/";
-      if (path === "/" || path.endsWith("/index.html")) {
-        const canonicalHref = langCode === "en"
-          ? "https://download-reels.github.io/"
-          : `https://download-reels.github.io/?lang=${langCode}`;
-        const canonicalEl = document.querySelector('link[rel="canonical"]');
-        if (canonicalEl) canonicalEl.setAttribute("href", canonicalHref);
-
-        const ogUrlEl = document.querySelector('meta[property="og:url"]');
-        if (ogUrlEl) ogUrlEl.setAttribute("content", canonicalHref);
-
-        if (langCode !== "en") {
-          const localTitle = `${this.t("hero.title")} — ${this.t("hero.badge")} | Download Reels`;
-          const localDesc = this.t("hero.desc").replace(/<[^>]*>/g, "");
-          document.title = localTitle;
-          const descEl = document.querySelector('meta[name="description"]');
-          if (descEl) descEl.setAttribute("content", localDesc);
-          const ogTitleEl = document.querySelector('meta[property="og:title"]');
-          if (ogTitleEl) ogTitleEl.setAttribute("content", localTitle);
-          const ogDescEl = document.querySelector('meta[property="og:description"]');
-          if (ogDescEl) ogDescEl.setAttribute("content", localDesc);
-        }
-      }
-    } catch (_) {}
-
     // Update Language Dropdown button label & active item
     this.updateDropdownUI(langCode);
 

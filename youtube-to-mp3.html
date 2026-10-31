@@ -3,23 +3,21 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>YouTube to MP3 Converter (320kbps HQ) — Free Ad-Free Audio Extractor & Trimmer</title>
-  <meta name="description" content="Convert any YouTube video or YouTube Short to 320kbps MP3 or lossless WAV audio directly in your browser. Powered by client-side FFmpeg WebAssembly with zero ads, zero popups, and audio trimming.">
-  <meta name="keywords" content="youtube to mp3, youtube to mp3 320kbps, convert youtube to mp3 high quality, youtube audio downloader, youtube to wav lossless, trim youtube mp3 online">
+  <title>YouTube to MP3 Converter (320kbps HQ) & YouTube Shorts Downloader (1080p)</title>
+  <meta name="description" content="Convert any YouTube video or YouTube Short to 320kbps MP3 or lossless WAV audio in your browser, or download YouTube Shorts in 1080p Full HD MP4 with client-side FFmpeg audio remuxing.">
   <meta name="author" content="Download Reels">
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <meta name="theme-color" content="#09090b">
   <link rel="manifest" href="manifest.json">
   <link rel="canonical" href="https://download-reels.github.io/youtube-to-mp3.html">
-                    <meta name="google-site-verification" content="8f586976ffe64162">
-  <meta name="google-site-verification" content="google8f586976ffe64162">
+  <meta name="google-site-verification" content="8f586976ffe64162">
 
   <!-- OpenGraph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Download Reels">
   <meta property="og:url" content="https://download-reels.github.io/youtube-to-mp3.html">
-  <meta property="og:title" content="YouTube to MP3 Converter (320kbps HQ) — Free Ad-Free Audio Extractor & Trimmer">
-  <meta property="og:description" content="Convert any YouTube video or YouTube Short to 320kbps MP3 or lossless WAV audio directly in your browser. Powered by client-side FFmpeg WebAssembly with zero ads, zero popups, and audio trimming.">
+  <meta property="og:title" content="YouTube to MP3 Converter (320kbps HQ) & YouTube Shorts Downloader (1080p)">
+  <meta property="og:description" content="Convert any YouTube video or YouTube Short to 320kbps MP3 or lossless WAV audio in your browser, or download YouTube Shorts in 1080p Full HD MP4 with client-side FFmpeg audio remuxing.">
   <meta property="og:image" content="https://download-reels.github.io/assets/og-banner.svg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -27,8 +25,8 @@
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="YouTube to MP3 Converter (320kbps HQ) — Free Ad-Free Audio Extractor & Trimmer">
-  <meta name="twitter:description" content="Convert any YouTube video or YouTube Short to 320kbps MP3 or lossless WAV audio directly in your browser. Powered by client-side FFmpeg WebAssembly with zero ads, zero popups, and audio trimming.">
+  <meta name="twitter:title" content="YouTube to MP3 Converter (320kbps HQ) & YouTube Shorts Downloader (1080p)">
+  <meta name="twitter:description" content="Convert any YouTube video or YouTube Short to 320kbps MP3 or lossless WAV audio in your browser, or download YouTube Shorts in 1080p Full HD MP4 with client-side FFmpeg audio remuxing.">
   <meta name="twitter:image" content="https://download-reels.github.io/assets/og-banner.svg">
 
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4%22/><polyline points=%227 10 12 15 17 10%22/><line x1=%2212%22 x2=%2212%22 y1=%2215%22 y2=%223%22/></svg>">
@@ -104,8 +102,8 @@
 {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  "name": "How to Convert YouTube to 320kbps MP3 in 3 Simple Steps",
-  "description": "Extract high-bitrate MP3 or lossless WAV audio with zero popups or redirects.",
+  "name": "How to Convert YouTube to 320kbps MP3 or Download 1080p Shorts",
+  "description": "Extract high-bitrate MP3 tracks or Full HD MP4 Shorts with zero popups.",
   "step": [
     {
       "@type": "HowToStep",
@@ -116,14 +114,14 @@
     {
       "@type": "HowToStep",
       "position": 2,
-      "name": "Select 320kbps MP3 or Lossless WAV",
-      "text": "Choose the MP3 320kbps format pill or open the Client FFmpeg Studio to select 320k/256k/192k bitrate and optional start/end trim times."
+      "name": "Choose 320kbps MP3 or 1080p MP4",
+      "text": "Select MP3 320kbps (with optional start/end audio trim) or pick 1080p/720p HD MP4 video."
     },
     {
       "@type": "HowToStep",
       "position": 3,
-      "name": "Save MP3 Directly to Your Device",
-      "text": "Your browser transcodes the audio stream locally via FFmpeg WebAssembly and triggers an instant MP3 download."
+      "name": "Save Directly to Your Device",
+      "text": "Your browser processes the stream locally via FFmpeg WebAssembly and triggers an instant download."
     }
   ]
 }
@@ -145,6 +143,14 @@
     },
     {
       "@type": "Question",
+      "name": "Why do 1080p and 720p YouTube Shorts downloads have full audio here?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "YouTube delivers 1080p and 720p streams as separate video-only and audio-only DASH tracks. Download Reels automatically downloads both and losslessly muxes them (-c copy) inside your browser."
+      }
+    },
+    {
+      "@type": "Question",
       "name": "Can I trim the start and end of a YouTube song before downloading MP3?",
       "acceptedAnswer": {
         "@type": "Answer",
@@ -161,18 +167,10 @@
     },
     {
       "@type": "Question",
-      "name": "Can I convert YouTube Shorts, TikToks, and Instagram Reels to MP3 too?",
+      "name": "Can I batch-download audio or Shorts from multiple YouTube links?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Yes, our audio extractor supports YouTube videos, YouTube Shorts, TikTok sounds, Instagram Reels audio, and X/Twitter videos."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Can I batch-download audio from multiple YouTube links?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Yes! Switch to the Bulk URLs tab at the top, paste multiple links (one per line), and extract them all at once."
+        "text": "Yes! Switch to the Bulk URLs tab at the top, paste multiple YouTube links (one per line), and extract them all at once."
       }
     },
     {
@@ -256,16 +254,16 @@
       <!-- SaveFrom.net Alternative Badge -->
       <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-card text-xs text-muted-foreground font-mono mb-1">
         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-        <span class="text-foreground font-medium">320kbps Extreme HQ • Client FFmpeg</span>
+        <span class="text-foreground font-medium">320kbps Extreme HQ • 1080p Shorts Muxer</span>
         <span class="text-zinc-500">•</span>
         <span data-i18n="hero.badgeFree">Ad-Free & 100% Free</span>
       </div>
 
       <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-        YouTube to MP3 Converter (320kbps Ultra HQ)
+        YouTube to MP3 Converter (320kbps) & Shorts Downloader
       </h1>
       <p class="text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed">
-        Extract crystal-clear <strong class="text-foreground">320kbps MP3</strong> or lossless WAV audio from any YouTube video, Short, TikTok, or Instagram Reel directly inside your browser with built-in start/end audio trimming.
+        Extract crystal-clear <strong class="text-foreground">320kbps MP3</strong> or lossless WAV audio from any YouTube link, or save <strong class="text-foreground">1080p &amp; 720p YouTube Shorts</strong> with lossless in-browser audio-video muxing and zero popup ads.
       </p>
     </div>
 
@@ -652,20 +650,17 @@
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-6 border-t border-border mb-12">
       
       <div class="rounded-lg border border-border bg-card p-4 space-y-1.5">
-        <p class="text-xs font-semibold text-foreground" data-i18n="features.f1Title">No Watermarks</p>
-        <p class="text-xs text-muted-foreground leading-relaxed" data-i18n="features.f1Desc">Direct clean video streams without added platform logos or stamps.</p>
+        <p class="text-xs font-semibold text-foreground">True 320kbps LAME MP3</p>
+        <p class="text-xs text-muted-foreground leading-relaxed">Encodes audio streams at 320kbps CBR (44.1kHz stereo) or uncompressed 16-bit PCM WAV using client-side FFmpeg.</p>
       </div>
-
       <div class="rounded-lg border border-border bg-card p-4 space-y-1.5">
-        <p class="text-xs font-semibold text-foreground" data-i18n="features.f2Title">Client Fast Resolvers</p>
-        <p class="text-xs text-muted-foreground leading-relaxed" data-i18n="features.f2Desc">Direct streaming via CORS endpoints for YouTube and TikTok.</p>
+        <p class="text-xs font-semibold text-foreground">1080p DASH Audio Remuxing</p>
+        <p class="text-xs text-muted-foreground leading-relaxed">Merges separate YouTube 1080p/720p video and M4A audio tracks losslessly (-c copy) inside your browser.</p>
       </div>
-
       <div class="rounded-lg border border-border bg-card p-4 space-y-1.5">
-        <p class="text-xs font-semibold text-foreground" data-i18n="features.f3Title">Mobile QR Handoff</p>
-        <p class="text-xs text-muted-foreground leading-relaxed" data-i18n="features.f3Desc">Scan with your camera to download directly to phone storage.</p>
+        <p class="text-xs font-semibold text-foreground">Precision Audio Trimmer</p>
+        <p class="text-xs text-muted-foreground leading-relaxed">Cut intro silence or extract specific song choruses by setting exact start and end trim seconds before encoding.</p>
       </div>
-
     </div>
 
     <!-- ======================================================== -->
@@ -673,8 +668,8 @@
     <!-- ======================================================== -->
     <section class="mb-14 border-t border-border pt-10">
       <div class="text-center mb-8">
-        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground">How to Convert YouTube to 320kbps MP3 in 3 Simple Steps</h2>
-        <p class="text-xs sm:text-sm text-muted-foreground mt-1 max-w-md mx-auto">Extract high-bitrate MP3 or lossless WAV audio with zero popups or redirects.</p>
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground">How to Convert YouTube to 320kbps MP3 or Download 1080p Shorts</h2>
+        <p class="text-xs sm:text-sm text-muted-foreground mt-1 max-w-md mx-auto">Extract high-bitrate MP3 tracks or Full HD MP4 Shorts with zero popups.</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -691,16 +686,16 @@
           <div class="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center font-mono text-xs font-semibold text-foreground">
             2
           </div>
-          <h3 class="text-sm font-semibold text-foreground">Select 320kbps MP3 or Lossless WAV</h3>
-          <p class="text-xs text-muted-foreground leading-relaxed">Choose the MP3 320kbps format pill or open the Client FFmpeg Studio to select 320k/256k/192k bitrate and optional start/end trim times.</p>
+          <h3 class="text-sm font-semibold text-foreground">Choose 320kbps MP3 or 1080p MP4</h3>
+          <p class="text-xs text-muted-foreground leading-relaxed">Select MP3 320kbps (with optional start/end audio trim) or pick 1080p/720p HD MP4 video.</p>
         </div>
 
         <div class="rounded-lg border border-border bg-card p-5 relative space-y-2">
           <div class="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center font-mono text-xs font-semibold text-foreground">
             3
           </div>
-          <h3 class="text-sm font-semibold text-foreground">Save MP3 Directly to Your Device</h3>
-          <p class="text-xs text-muted-foreground leading-relaxed">Your browser transcodes the audio stream locally via FFmpeg WebAssembly and triggers an instant MP3 download.</p>
+          <h3 class="text-sm font-semibold text-foreground">Save Directly to Your Device</h3>
+          <p class="text-xs text-muted-foreground leading-relaxed">Your browser processes the stream locally via FFmpeg WebAssembly and triggers an instant download.</p>
         </div>
 
       </div>
@@ -711,61 +706,47 @@
     <!-- ======================================================== -->
     <section class="mb-14 border-t border-border pt-10">
       <div class="text-center mb-6">
-        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground" data-i18n="matrix.title">
-          Supported Platforms & Quality Matrix
-        </h2>
-        <p class="text-xs sm:text-sm text-muted-foreground mt-1" data-i18n="matrix.subtitle">
-          Universal media resolution with watermark suppression and audio separation.
-        </p>
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground">YouTube Audio & Video Format Specifications</h2>
+        <p class="text-xs sm:text-sm text-muted-foreground mt-1">Supported output codecs, bitrates, and client-side processing modes.</p>
       </div>
-
       <div class="rounded-lg border border-border bg-card overflow-hidden text-xs">
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="border-b border-border bg-secondary/50 font-mono text-[11px] text-muted-foreground">
-                <th class="p-3" data-i18n="matrix.thPlatform">Platform</th>
-                <th class="p-3" data-i18n="matrix.thQuality">Max Quality</th>
-                <th class="p-3" data-i18n="matrix.thWatermark">Watermark</th>
-                <th class="p-3" data-i18n="matrix.thAudio">Audio (MP3)</th>
-                <th class="p-3" data-i18n="matrix.thSpeed">Speed</th>
+                <th class="p-3">Output Format</th><th class="p-3">Codec / Container</th><th class="p-3">Bitrate / Resolution</th><th class="p-3">Processing Mode</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-border text-zinc-300">
               <tr>
-                <td class="p-3 font-medium text-foreground">Instagram Reels</td>
-                <td class="p-3">1080p HD</td>
-                <td class="p-3 text-emerald-400">Removed</td>
-                <td class="p-3">Supported</td>
-                <td class="p-3 font-mono text-muted-foreground">Instant</td>
+                <td class="p-3 font-medium text-foreground">MP3 Ultra HQ</td>
+                <td class="p-3 text-emerald-400 font-medium">libmp3lame (.mp3)</td>
+                <td class="p-3 text-muted-foreground">320 kbps / 44.1 kHz</td>
+                <td class="p-3 font-mono text-muted-foreground">In-Browser WASM Encode</td>
               </tr>
               <tr>
-                <td class="p-3 font-medium text-foreground">TikTok Videos</td>
-                <td class="p-3">1080p HD</td>
-                <td class="p-3 text-emerald-400">No Watermark</td>
-                <td class="p-3">Supported</td>
-                <td class="p-3 font-mono text-muted-foreground">&lt; 1s</td>
+                <td class="p-3 font-medium text-foreground">WAV Studio Lossless</td>
+                <td class="p-3 text-emerald-400 font-medium">pcm_s16le (.wav)</td>
+                <td class="p-3 text-muted-foreground">1,411 kbps Uncompressed</td>
+                <td class="p-3 font-mono text-muted-foreground">Web Audio / FFmpeg PCM</td>
               </tr>
               <tr>
-                <td class="p-3 font-medium text-foreground">YouTube Shorts & Videos</td>
-                <td class="p-3">1080p / 720p</td>
-                <td class="p-3 text-emerald-400">None</td>
-                <td class="p-3">Supported</td>
-                <td class="p-3 font-mono text-muted-foreground">Direct Stream</td>
+                <td class="p-3 font-medium text-foreground">YouTube 1080p Full HD</td>
+                <td class="p-3 text-emerald-400 font-medium">H.264 + AAC (.mp4)</td>
+                <td class="p-3 text-muted-foreground">1920x1080 / 60fps</td>
+                <td class="p-3 font-mono text-muted-foreground">Lossless Stream Mux (-c copy)</td>
               </tr>
               <tr>
-                <td class="p-3 font-medium text-foreground">X (Twitter) Clips</td>
-                <td class="p-3">1080p HD</td>
-                <td class="p-3 text-emerald-400">None</td>
-                <td class="p-3">Supported</td>
-                <td class="p-3 font-mono text-muted-foreground">Instant</td>
+                <td class="p-3 font-medium text-foreground">YouTube 720p HD</td>
+                <td class="p-3 text-emerald-400 font-medium">H.264 + AAC (.mp4)</td>
+                <td class="p-3 text-muted-foreground">1280x720 / 60fps</td>
+                <td class="p-3 font-mono text-muted-foreground">Lossless Stream Mux (-c copy)</td>
               </tr>
               <tr>
-                <td class="p-3 font-medium text-foreground">Direct MP4 / WebM</td>
-                <td class="p-3">Original 4K</td>
-                <td class="p-3 text-emerald-400">Original</td>
-                <td class="p-3">Direct</td>
-                <td class="p-3 font-mono text-muted-foreground">Maximum</td>
+                <td class="p-3 font-medium text-foreground">YouTube 360p Fast</td>
+                <td class="p-3 text-emerald-400 font-medium">Progressive (.mp4)</td>
+                <td class="p-3 text-muted-foreground">640x360 Direct</td>
+                <td class="p-3 font-mono text-muted-foreground">Instant Direct Download</td>
               </tr>
             </tbody>
           </table>
@@ -838,8 +819,8 @@
     <!-- ======================================================== -->
     <section class="mb-14 border-t border-border pt-10">
       <div class="text-center mb-8">
-        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Frequently Asked Questions — YouTube to MP3 320kbps Converter</h2>
-        <p class="text-xs sm:text-sm text-muted-foreground mt-1">Extract high-bitrate MP3 or lossless WAV audio with zero popups or redirects.</p>
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Frequently Asked Questions — YouTube to MP3 (320kbps) & Shorts Downloader</h2>
+        <p class="text-xs sm:text-sm text-muted-foreground mt-1">Extract high-bitrate MP3 tracks or Full HD MP4 Shorts with zero popups.</p>
       </div>
       <div class="space-y-3 text-xs">
 
@@ -849,6 +830,14 @@
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
           <p class="text-muted-foreground mt-2 leading-relaxed">Yes! Download Reels uses libmp3lame inside a client-side FFmpeg WebAssembly engine to encode audio streams at 320kbps (44.1kHz stereo) or uncompressed 16-bit PCM WAV right on your device.</p>
+        </details>
+
+        <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
+          <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
+            <span>Why do 1080p and 720p YouTube Shorts downloads have full audio here?</span>
+            <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </summary>
+          <p class="text-muted-foreground mt-2 leading-relaxed">YouTube delivers 1080p and 720p streams as separate video-only and audio-only DASH tracks. Download Reels automatically downloads both and losslessly muxes them (-c copy) inside your browser.</p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
@@ -869,18 +858,10 @@
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span>Can I convert YouTube Shorts, TikToks, and Instagram Reels to MP3 too?</span>
+            <span>Can I batch-download audio or Shorts from multiple YouTube links?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed">Yes, our audio extractor supports YouTube videos, YouTube Shorts, TikTok sounds, Instagram Reels audio, and X/Twitter videos.</p>
-        </details>
-
-        <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
-          <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span>Can I batch-download audio from multiple YouTube links?</span>
-            <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed">Yes! Switch to the Bulk URLs tab at the top, paste multiple links (one per line), and extract them all at once.</p>
+          <p class="text-muted-foreground mt-2 leading-relaxed">Yes! Switch to the Bulk URLs tab at the top, paste multiple YouTube links (one per line), and extract them all at once.</p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
@@ -906,23 +887,17 @@
         </p>
       </div>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
         <a href="youtube-video-cutter.html" class="p-4 rounded-lg border border-border bg-card hover:border-rose-500/50 transition block">
-          <div class="font-mono text-[10px] text-rose-400 mb-1 uppercase">Cut by Timestamp • Multi-Clip</div>
-          <h3 class="font-semibold text-foreground mb-1">YouTube Video Cutter &amp; Online Clip Maker</h3>
-          <p class="text-muted-foreground leading-relaxed">Cut YouTube videos by timestamp, trim multiple segments simultaneously, add 1st-second hook banners, and download MP4 clips.</p>
-        </a>
-
-        <a href="youtube-to-shorts.html" class="p-4 rounded-lg border border-border bg-card hover:border-purple-500/50 transition block">
-          <div class="font-mono text-[10px] text-purple-400 mb-1 uppercase">OpusClip Alternative • Free</div>
-          <h3 class="font-semibold text-foreground mb-1">Convert YouTube to Shorts &amp; Viral Reels</h3>
-          <p class="text-muted-foreground leading-relaxed">Turn long YouTube videos into multiple vertical Reels &amp; Shorts with viral headline hooks and custom brand logo watermarks.</p>
+          <div class="font-mono text-[10px] text-rose-400 mb-1 uppercase">Cut by Timestamp • Free OpusClip Alternative</div>
+          <h3 class="font-semibold text-foreground mb-1">YouTube Video Cutter &amp; Shorts / Reels Clip Maker</h3>
+          <p class="text-muted-foreground leading-relaxed">Cut YouTube videos by timestamp, split long videos into multiple Shorts &amp; Reels simultaneously, and burn 1st-second viral hook banners.</p>
         </a>
 
         <a href="youtube-to-mp3.html" class="p-4 rounded-lg border border-border bg-card hover:border-amber-500/50 transition block">
-          <div class="font-mono text-[10px] text-amber-400 mb-1 uppercase">320kbps MP3 • Lossless WAV</div>
-          <h3 class="font-semibold text-foreground mb-1">YouTube to MP3 Converter (320kbps HQ)</h3>
-          <p class="text-muted-foreground leading-relaxed">Extract 320kbps MP3 or lossless WAV audio from any YouTube video or Short directly in your browser via FFmpeg WebAssembly.</p>
+          <div class="font-mono text-[10px] text-amber-400 mb-1 uppercase">320kbps MP3 • 1080p Shorts</div>
+          <h3 class="font-semibold text-foreground mb-1">YouTube to MP3 Converter (320kbps) &amp; Shorts Downloader</h3>
+          <p class="text-muted-foreground leading-relaxed">Extract 320kbps MP3 or lossless WAV audio, or download YouTube Shorts in 1080p Full HD MP4 with client-side FFmpeg audio muxing.</p>
         </a>
 
         <a href="instagram-reel-downloader.html" class="p-4 rounded-lg border border-border bg-card hover:border-pink-500/50 transition block">
@@ -935,12 +910,6 @@
           <div class="font-mono text-[10px] text-emerald-400 mb-1 uppercase">TikTok • Clean Stream</div>
           <h3 class="font-semibold text-foreground mb-1">TikTok Video Downloader Without Watermark</h3>
           <p class="text-muted-foreground leading-relaxed">Remove floating TikTok username stamps and download clean HD MP4 videos or original MP3 sounds instantly.</p>
-        </a>
-
-        <a href="youtube-shorts-downloader.html" class="p-4 rounded-lg border border-border bg-card hover:border-sky-500/50 transition block">
-          <div class="font-mono text-[10px] text-sky-400 mb-1 uppercase">YouTube Shorts • 1080p HD</div>
-          <h3 class="font-semibold text-foreground mb-1">YouTube Shorts Downloader (1080p MP4)</h3>
-          <p class="text-muted-foreground leading-relaxed">Download YouTube Shorts in 1080p &amp; 720p Full HD MP4 with automatic client-side audio remuxing and zero ads.</p>
         </a>
       </div>
     </section>
@@ -967,12 +936,11 @@
         <div>
           <p class="font-semibold text-foreground mb-2.5" data-i18n="footer.platforms">Platforms &amp; Tools</p>
           <ul class="space-y-1.5">
-            <li><a href="youtube-video-cutter.html" class="hover:text-foreground transition">YouTube Video Cutter</a></li>
-            <li><a href="youtube-to-shorts.html" class="hover:text-foreground transition">YouTube to Shorts &amp; Reels</a></li>
-            <li><a href="youtube-to-mp3.html" class="hover:text-foreground transition">YouTube to MP3 (320kbps)</a></li>
+            <li><a href="youtube-video-cutter.html" class="hover:text-foreground transition">YouTube Video Cutter &amp; Shorts Maker</a></li>
+            <li><a href="youtube-to-mp3.html" class="hover:text-foreground transition">YouTube to MP3 (320kbps) &amp; Shorts</a></li>
             <li><a href="instagram-reel-downloader.html" class="hover:text-foreground transition">Instagram Reel Downloader</a></li>
             <li><a href="tiktok-video-downloader.html" class="hover:text-foreground transition">TikTok No Watermark</a></li>
-            <li><a href="youtube-shorts-downloader.html" class="hover:text-foreground transition">YouTube Shorts Downloader</a></li>
+            <li><a href="blog/savefrom-net-shutting-down-alternative.html" class="hover:text-foreground transition">SaveFrom.net Alternative</a></li>
           </ul>
         </div>
 

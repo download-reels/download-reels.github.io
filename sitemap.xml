@@ -1,85 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml"
-        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
-  <!-- Homepage (Default & Multilingual Alternate Links) -->
+  <!-- Homepage -->
   <url>
     <loc>https://download-reels.github.io/</loc>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://download-reels.github.io/" />
-    <xhtml:link rel="alternate" hreflang="en" href="https://download-reels.github.io/?lang=en" />
-    <xhtml:link rel="alternate" hreflang="es" href="https://download-reels.github.io/?lang=es" />
-    <xhtml:link rel="alternate" hreflang="pt" href="https://download-reels.github.io/?lang=pt" />
-    <xhtml:link rel="alternate" hreflang="id" href="https://download-reels.github.io/?lang=id" />
-    <xhtml:link rel="alternate" hreflang="hi" href="https://download-reels.github.io/?lang=hi" />
-    <xhtml:link rel="alternate" hreflang="ar" href="https://download-reels.github.io/?lang=ar" />
-    <xhtml:link rel="alternate" hreflang="ru" href="https://download-reels.github.io/?lang=ru" />
-    <xhtml:link rel="alternate" hreflang="fr" href="https://download-reels.github.io/?lang=fr" />
     <lastmod>2026-10-31</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 
-  <!-- Multilingual Index Endpoints -->
-  <url>
-    <loc>https://download-reels.github.io/?lang=es</loc>
-    <lastmod>2026-10-31</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://download-reels.github.io/?lang=pt</loc>
-    <lastmod>2026-10-31</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://download-reels.github.io/?lang=id</loc>
-    <lastmod>2026-10-31</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://download-reels.github.io/?lang=hi</loc>
-    <lastmod>2026-10-31</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://download-reels.github.io/?lang=ar</loc>
-    <lastmod>2026-10-31</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://download-reels.github.io/?lang=ru</loc>
-    <lastmod>2026-10-31</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>https://download-reels.github.io/?lang=fr</loc>
-    <lastmod>2026-10-31</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <!-- Dedicated High-Intent Exact-Match Keyword Landing Pages -->
-  <url>
-    <loc>https://download-reels.github.io/reel-clipper-studio.html</loc>
-    <lastmod>2026-10-31</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.95</priority>
-  </url>
+  <!-- 4 Non-Overlapping Pillar Tool Pages -->
   <url>
     <loc>https://download-reels.github.io/youtube-video-cutter.html</loc>
-    <lastmod>2026-10-31</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.95</priority>
-  </url>
-  <url>
-    <loc>https://download-reels.github.io/youtube-to-shorts.html</loc>
     <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
@@ -102,70 +34,56 @@
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
   </url>
-  <url>
-    <loc>https://download-reels.github.io/youtube-shorts-downloader.html</loc>
-    <lastmod>2026-10-31</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.95</priority>
-  </url>
 
-  <!-- Blog Index -->
+  <!-- Blog Index & Technical Engineering Guides -->
   <url>
     <loc>https://download-reels.github.io/blog/</loc>
     <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
-
-  <!-- Article: Python Video Downloader -->
+  <url>
+    <loc>https://download-reels.github.io/blog/savefrom-net-shutting-down-alternative.html</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
   <url>
     <loc>https://download-reels.github.io/blog/how-to-download-reels-python.html</loc>
     <lastmod>2026-10-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Article: JavaScript & Node.js Video Downloader -->
   <url>
     <loc>https://download-reels.github.io/blog/how-to-download-videos-javascript-nodejs.html</loc>
     <lastmod>2026-10-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Article: Golang Video Downloader -->
   <url>
     <loc>https://download-reels.github.io/blog/download-videos-golang.html</loc>
     <lastmod>2026-10-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Article: Rust Video Scraper -->
   <url>
     <loc>https://download-reels.github.io/blog/download-reels-rust.html</loc>
     <lastmod>2026-10-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Article: FFmpeg Transcoding & Encoding Guide -->
   <url>
     <loc>https://download-reels.github.io/blog/ffmpeg-video-encoding-guide.html</loc>
     <lastmod>2026-10-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Article: yt-dlp & youtube-dl CLI Guide -->
   <url>
     <loc>https://download-reels.github.io/blog/youtube-dl-ytdlp-cli-guide.html</loc>
     <lastmod>2026-10-31</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-
-  <!-- Article: Video SEO Ranking Guide -->
   <url>
     <loc>https://download-reels.github.io/blog/video-seo-ranking-guide.html</loc>
     <lastmod>2026-10-31</lastmod>
@@ -173,13 +91,4 @@
     <priority>0.8</priority>
   </url>
 
-  <!-- Article: SaveFrom.net Alternative -->
-  <url>
-    <loc>https://download-reels.github.io/blog/savefrom-net-shutting-down-alternative.html</loc>
-    <lastmod>2026-10-31</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-
 </urlset>
-
