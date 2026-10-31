@@ -1,0 +1,40 @@
+name: "💡 Feature Request"
+description: "Suggest a new feature, video platform, or Reel Clipper Studio enhancement"
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve **Download Reels & Clipper Studio**! Fill out the form below to suggest a feature.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: Which part of the tool is this feature for?
+      options:
+        - "🎬 Reel Clipper Studio (Hooks, Captions, Cropping, Effects)"
+        - "🌐 New Video Platform Support (Facebook, Reddit, Pinterest, Twitch, etc.)"
+        - "🎵 Audio / Video Formats & Codecs (MP3, WAV, 4K, WebM, GIF)"
+        - "📦 Bulk URL Downloader & ZIP Export"
+        - "⚡ Performance / Mobile UX / Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to see added or improved?
+      description: Describe how the feature should work and why it would be useful.
+      placeholder: "e.g., Allow auto-cropping horizontal 16:9 YouTube videos into 9:16 vertical Reels inside the Studio..."
+    validations:
+      required: true
+
+  - type: input
+    id: example_url
+    attributes:
+      label: Example Video URL or Reference (Optional)
+      placeholder: "https://..."
+    validations:
+      required: false

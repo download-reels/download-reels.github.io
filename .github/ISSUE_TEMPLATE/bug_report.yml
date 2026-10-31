@@ -1,0 +1,37 @@
+name: "🐛 Broken Video Link / Bug Report"
+description: "Report a video URL that failed to resolve or a bug in the downloader/studio"
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: input
+    id: video_url
+    attributes:
+      label: Video URL that failed (if applicable)
+      description: Paste the public Instagram, TikTok, YouTube, or X URL that caused the issue.
+      placeholder: "https://www.youtube.com/watch?v=..."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform / Component
+      options:
+        - "YouTube / YouTube Shorts"
+        - "Instagram Reels / Posts"
+        - "TikTok"
+        - "X (Twitter)"
+        - "Reel Clipper Studio (FFmpeg WASM)"
+        - "320kbps MP3 / Format Converter"
+        - "Bulk URL Downloader"
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: What happened?
+      description: Describe the error message or unexpected behavior.
+      placeholder: "Paste any error message or browser console log here..."
+    validations:
+      required: true
