@@ -264,7 +264,7 @@ async function resolveInstagram(url) {
 }
 
 /**
- * YouTube resolver using Piped API proxies
+ * YouTube resolver using Invidious for Adaptive HD (1080p/720p/480p) + Piped fallback
  */
 async function resolveYouTube(url) {
   const match = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
@@ -273,6 +273,28 @@ async function resolveYouTube(url) {
   const videoId = match[1];
   const thumbnailUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 
+  // 1. First try Invidious for full adaptive 1080p / 720p / 480p / 360p & audio streams
+  const invidiousInstances = [
+    "https://yt.chocolatemoo53.com"
+  ];
+
+  for (const inst of invidiousInstances) {
+    try {
+      const res = await fetch(`${inst}/api/v1/videos/${videoId}`, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Accept": "application/json"
+        }
+      });
+      if (!res.ok) continue;
+      const data = await res.json().catch(() => null);
+      if (data && data.adaptiveFormats && data.adaptiveFormats.length > 0) {
+        return buildYouTubeInvidiousResult(videoId, data, thumbnailUrl);
+      }
+    } catch (_) {}
+  }
+
+  // 2. Fallback to Piped for progressive streams
   const pipedInstances = [
     "https://api.piped.private.coffee",
     "https://pipedapi.tokhmi.xyz",
@@ -305,6 +327,144 @@ async function resolveYouTube(url) {
   }
 
   throw lastErr || new Error("Unable to extract YouTube streams. Please verify the video is public.");
+}
+
+function getFormatHeight(v) {
+  if (v.qualityLabel) {
+    const qMatch = v.qualityLabel.match(/(\d+)p/i);
+    if (qMatch) return parseInt(qMatch[1], 10);
+  }
+  if (v.size) {
+    const parts = v.size.split("x").map(Number);
+    if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+      return Math.min(parts[0], parts[1]);
+    }
+  }
+  if (v.resolution) {
+    const rMatch = v.resolution.match(/(\d+)p/i);
+    if (rMatch) {
+      const val = parseInt(rMatch[1], 10);
+      if (val >= 1920) return 1080;
+      if (val >= 1280) return 720;
+      if (val >= 854) return 480;
+      if (val >= 640) return 360;
+      return val;
+    }
+  }
+  return 0;
+}
+
+function buildYouTubeInvidiousResult(videoId, data, thumbnailUrl) {
+  const formats = [];
+  const adaptive = data.adaptiveFormats || [];
+
+  // Extract best audio track (m4a AAC preferred for fast MP4 container remuxing)
+  const audioStreams = adaptive.filter(f => {
+    const isAudio = f.type && f.type.includes("audio");
+    const isM4a = f.container === "m4a" || (f.mime && f.mime.includes("mp4")) || (f.type && f.type.includes("audio/mp4"));
+    return isAudio && isM4a;
+  });
+  const bestAudio = audioStreams.sort((a, b) => (parseInt(b.bitrate || "0", 10) - parseInt(a.bitrate || "0", 10)))[0]
+    || adaptive.find(f => f.type && f.type.includes("audio"));
+  const audioUrl = bestAudio ? bestAudio.url : null;
+
+  // Extract video streams (prioritizing MP4 H.264 for instant remuxing)
+  const isMp4H264 = v => {
+    const isMp4 = v.container === "mp4" || (v.mime && v.mime.includes("mp4")) || (v.type && v.type.includes("mp4"));
+    const isH264 = !v.encoding || v.encoding === "h264" || (v.type && v.type.includes("avc1"));
+    return isMp4 && isH264;
+  };
+  const videoStreams = adaptive.filter(f => f.type && f.type.includes("video") && isMp4H264(f));
+
+  const tiers = [
+    { label: "1080p Full HD", quality: "1080p", minHeight: 1080 },
+    { label: "720p HD", quality: "720p", minHeight: 720 },
+    { label: "480p", quality: "480p", minHeight: 480 },
+    { label: "360p", quality: "360p", minHeight: 360 }
+  ];
+
+  const addedTiers = new Set();
+  tiers.forEach(tier => {
+    const candidate = videoStreams.find(v => {
+      const h = getFormatHeight(v);
+      return h === tier.minHeight && !addedTiers.has(tier.quality);
+    });
+
+    if (candidate && candidate.url) {
+      addedTiers.add(tier.quality);
+      formats.push({
+        label: tier.label,
+        url: candidate.url,
+        audioUrl: audioUrl,
+        quality: tier.quality,
+        ext: "mp4",
+        videoOnly: true,
+        needsMuxing: Boolean(audioUrl),
+        size: candidate.clen ? parseInt(candidate.clen, 10) : undefined
+      });
+    }
+  });
+
+  // Direct progressive streams if available
+  if (data.formatStreams && data.formatStreams.length > 0) {
+    data.formatStreams.forEach(fs => {
+      if (fs.url) {
+        formats.push({
+          label: `MP4 ${fs.resolution || "360p"} (Direct Stream)`,
+          url: fs.url,
+          quality: fs.resolution || "360p",
+          ext: "mp4",
+          videoOnly: false
+        });
+      }
+    });
+  }
+
+  // Audio / MP3 format choices
+  if (audioUrl) {
+    formats.push({
+      label: "MP3 Audio (320 kbps Ultra HQ)",
+      url: audioUrl,
+      quality: "320kbps MP3",
+      ext: "mp3",
+      isAudio: true,
+      bitrate: "320k",
+      needsConversion: true
+    });
+    formats.push({
+      label: "MP3 Audio (192 kbps Standard)",
+      url: audioUrl,
+      quality: "192kbps MP3",
+      ext: "mp3",
+      isAudio: true,
+      bitrate: "192k",
+      needsConversion: true
+    });
+    formats.push({
+      label: "Original Audio (M4A)",
+      url: audioUrl,
+      quality: "Original Audio",
+      ext: "m4a",
+      isAudio: true
+    });
+  }
+
+  const directStreamUrl = (data.formatStreams && data.formatStreams[0]?.url) || null;
+
+  return {
+    status: "success",
+    platform: "youtube",
+    id: videoId,
+    title: data.title || "YouTube Video",
+    author: data.author || "YouTube Creator",
+    authorHandle: null,
+    thumbnailUrl: (data.videoThumbnails && data.videoThumbnails[0]?.url) || thumbnailUrl,
+    duration: data.lengthSeconds,
+    videoUrl: directStreamUrl || formats[0]?.url || null,
+    audioUrl: audioUrl,
+    formats,
+    source: "invidious"
+  };
 }
 
 function buildYouTubeResult(videoId, data, thumbnailUrl) {

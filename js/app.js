@@ -390,11 +390,44 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const downloadUrl = selectedFormat.url || currentMedia.videoUrl;
     const cleanTitle = (currentMedia.title || "video")
       .replace(/[^a-zA-Z0-9_-]/g, "_")
       .substring(0, 40);
     const filename = `${cleanTitle}_${selectedFormat.quality || "hd"}.${selectedFormat.ext || "mp4"}`;
+
+    // If client-side WebAssembly remuxing is required (e.g. YouTube 1080p/720p/480p separate video + audio tracks)
+    if (selectedFormat.needsMuxing && (selectedFormat.audioUrl || currentMedia.audioUrl) && window.mediaConverterEngine) {
+      primaryDownloadBtn.disabled = true;
+      const originalText = primaryDownloadBtn.innerHTML;
+      const audioUrl = selectedFormat.audioUrl || currentMedia.audioUrl;
+      const videoUrl = selectedFormat.url || currentMedia.videoUrl;
+
+      showToast(window.i18n ? window.i18n.t("toast.downloading") : "Merging HD video & audio tracks in browser...", "info");
+
+      try {
+        const result = await window.mediaConverterEngine.mux(videoUrl, audioUrl, (p) => {
+          primaryDownloadBtn.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            ${p.message || p.percent + "%"}
+          `;
+        });
+
+        window.downloaderEngine.triggerDownloadLink(result.url, filename);
+        showToast("HD Video muxed & ready to enjoy!", "success");
+        return;
+      } catch (muxErr) {
+        console.error("Client FFmpeg muxing error, attempting direct stream download:", muxErr);
+        showToast("Remux failed in browser: downloading direct video stream...", "error");
+      } finally {
+        primaryDownloadBtn.disabled = false;
+        primaryDownloadBtn.innerHTML = originalText;
+      }
+    }
+
+    const downloadUrl = selectedFormat.url || currentMedia.videoUrl;
 
     primaryDownloadBtn.disabled = true;
     const originalText = primaryDownloadBtn.innerHTML;

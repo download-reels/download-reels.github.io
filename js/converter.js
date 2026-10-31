@@ -251,6 +251,155 @@ class MediaConverterEngine {
 
     return new Blob([view], { type: 'audio/wav' });
   }
+
+  /**
+   * Helper to fetch media stream into Uint8Array with streaming progress and proxy fallback
+   */
+  async fetchBufferWithProgress(url, stageName, startPct, endPct, onProgress = () => {}) {
+    const fetchDirectOrProxy = async (targetUrl) => {
+      let resp;
+      try {
+        resp = await fetch(targetUrl, { mode: "cors" });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      } catch (err) {
+        // Fallback to configured worker proxy if CORS or direct fetch fails
+        if (!targetUrl.includes("/api/proxy")) {
+          const apiBase = (window.downloaderEngine?.defaultSettings?.apiUrl || "https://clipper-resolver.download-reels.workers.dev").replace(/\/+$/, "");
+          const proxyUrl = `${apiBase}/api/proxy?url=${encodeURIComponent(targetUrl)}`;
+          resp = await fetch(proxyUrl, { mode: "cors" });
+          if (!resp.ok) throw new Error(`Proxy HTTP ${resp.status}`);
+        } else {
+          throw err;
+        }
+      }
+      return resp;
+    };
+
+    // If it is known to require proxy (googlevideo.com has no CORS), route directly to proxy
+    let target = url;
+    if (url.includes("googlevideo.com") && !url.includes("/api/proxy")) {
+      const apiBase = (window.downloaderEngine?.defaultSettings?.apiUrl || "https://clipper-resolver.download-reels.workers.dev").replace(/\/+$/, "");
+      target = `${apiBase}/api/proxy?url=${encodeURIComponent(url)}`;
+    }
+
+    const response = await fetchDirectOrProxy(target);
+    const contentLength = response.headers.get("content-length");
+    const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
+
+    if (!response.body || !response.body.getReader) {
+      const buf = await response.arrayBuffer();
+      onProgress({ stage: stageName, percent: endPct, message: `Loaded ${stageName}...` });
+      return new Uint8Array(buf);
+    }
+
+    const reader = response.body.getReader();
+    const chunks = [];
+    let received = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      received += value.length;
+      if (totalBytes > 0) {
+        const ratio = received / totalBytes;
+        const currentPct = Math.round(startPct + ratio * (endPct - startPct));
+        onProgress({ stage: stageName, percent: Math.min(endPct, currentPct), message: `Downloading ${stageName}: ${Math.round(ratio * 100)}%` });
+      } else {
+        const mb = (received / 1024 / 1024).toFixed(1);
+        onProgress({ stage: stageName, percent: startPct, message: `Downloading ${stageName} (${mb} MB)...` });
+      }
+    }
+
+    const combined = new Uint8Array(received);
+    let offset = 0;
+    for (const chunk of chunks) {
+      combined.set(chunk, offset);
+      offset += chunk.length;
+    }
+    return combined;
+  }
+
+  /**
+   * Client-side remuxer: combines separate video and audio streams into a single playable MP4 file
+   * using FFmpeg WebAssembly without re-encoding (instant stream copy).
+   * @param {string} videoUrl - Video stream URL (proxied if needed for CORS)
+   * @param {string} audioUrl - Audio stream URL (proxied if needed for CORS)
+   * @param {function} onProgress - Progress reporting callback ({ stage, percent, message })
+   * @returns {Promise<{ blob: Blob, url: string, filename: string, size: number }>}
+   */
+  async mux(videoUrl, audioUrl, onProgress = () => {}) {
+    onProgress({ stage: "fetching_video", percent: 5, message: "Fetching video stream..." });
+
+    try {
+      // 1. Fetch video track (0% -> 45%)
+      const videoData = await this.fetchBufferWithProgress(videoUrl, "HD Video Track", 5, 45, onProgress);
+
+      // 2. Fetch audio track (45% -> 65%)
+      onProgress({ stage: "fetching_audio", percent: 45, message: "Fetching audio stream..." });
+      const audioData = await this.fetchBufferWithProgress(audioUrl, "HQ Audio Track", 45, 65, onProgress);
+
+      // 3. Initialize FFmpeg engine
+      onProgress({ stage: "initializing", percent: 70, message: "Initializing FFmpeg remuxer engine..." });
+      const ffmpeg = await this.loadFFmpeg(onProgress);
+
+      const inVideo = `video_${Date.now()}.mp4`;
+      const inAudio = `audio_${Date.now()}.m4a`;
+      const outMuxed = `muxed_${Date.now()}.mp4`;
+
+      ffmpeg.FS("writeFile", inVideo, videoData);
+      ffmpeg.FS("writeFile", inAudio, audioData);
+
+      onProgress({ stage: "muxing", percent: 85, message: "Merging video + audio streams..." });
+
+      // 4. Run stream copy muxing (-c copy is instant and lossless)
+      try {
+        await ffmpeg.run(
+          "-i", inVideo,
+          "-i", inAudio,
+          "-c", "copy",
+          "-movflags", "+faststart",
+          outMuxed
+        );
+      } catch (copyErr) {
+        console.warn("Direct stream copy failed, falling back to AAC audio remux:", copyErr);
+        await ffmpeg.run(
+          "-i", inVideo,
+          "-i", inAudio,
+          "-c:v", "copy",
+          "-c:a", "aac",
+          "-b:a", "192k",
+          "-movflags", "+faststart",
+          outMuxed
+        );
+      }
+
+      onProgress({ stage: "finalizing", percent: 96, message: "Assembling final MP4 video..." });
+      const data = ffmpeg.FS("readFile", outMuxed);
+
+      // Clean up virtual filesystem memory
+      try {
+        ffmpeg.FS("unlink", inVideo);
+        ffmpeg.FS("unlink", inAudio);
+        ffmpeg.FS("unlink", outMuxed);
+      } catch (_) {}
+
+      const blob = new Blob([data.buffer], { type: "video/mp4" });
+      onProgress({ stage: "complete", percent: 100, message: "HD Video ready!" });
+
+      return {
+        blob,
+        url: URL.createObjectURL(blob),
+        filename: `muxed_${Date.now()}.mp4`,
+        size: blob.size,
+        format: "mp4"
+      };
+
+    } catch (err) {
+      console.error("FFmpeg remuxing failed:", err);
+      throw err;
+    }
+  }
 }
 
 // Global converter instance
