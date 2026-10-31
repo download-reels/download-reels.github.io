@@ -67,6 +67,12 @@
 
   <!-- Dedicated High-Intent Exact-Match Keyword Landing Pages -->
   <url>
+    <loc>https://download-reels.github.io/reel-clipper-studio.html</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
     <loc>https://download-reels.github.io/youtube-video-cutter.html</loc>
     <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>

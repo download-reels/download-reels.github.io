@@ -101,114 +101,90 @@
 
   <!-- Schema.org HowTo -->
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "HowTo",
-    "name": "How to Download Any Reel or Split Videos into Multiple Viral Clips Online",
-    "description": "Follow these 3 simple steps to download reels and videos from Instagram, TikTok, YouTube Shorts, or X in high-definition MP4, or slice them into multiple reels.",
-    "step": [
-      {
-        "@type": "HowToStep",
-        "position": 1,
-        "name": "Copy Video Link",
-        "text": "Open Instagram, TikTok, or YouTube and tap the share button to copy the link to your clipboard."
-      },
-      {
-        "@type": "HowToStep",
-        "position": 2,
-        "name": "Paste in Download Reels",
-        "text": "Paste the copied URL (or multiple bulk URLs) into the search bar at download-reels.github.io and hit Download."
-      },
-      {
-        "@type": "HowToStep",
-        "position": 3,
-        "name": "Save MP4, Convert to 320k MP3, or Clip Multiple Reels",
-        "text": "Choose your desired resolution (1080p HD, 720p, or 320kbps MP3 audio), or open the Client-Side Reel Studio to slice multiple timeline segments with custom hook frames and export as a ZIP."
-      }
-    ]
-  }
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "How to Download YouTube Shorts in 1080p MP4 With Audio",
+  "description": "Save vertical YouTube Shorts in Full HD with lossless audio remuxing.",
+  "step": [
+    {
+      "@type": "HowToStep",
+      "position": 1,
+      "name": "Copy YouTube Shorts URL",
+      "text": "Tap the Share button on any YouTube Short (youtube.com/shorts/...) and copy the link."
+    },
+    {
+      "@type": "HowToStep",
+      "position": 2,
+      "name": "Paste Link & Choose Resolution",
+      "text": "Paste the link above to reveal 1080p HD, 720p HD, 360p MP4, and MP3 audio formats."
+    },
+    {
+      "@type": "HowToStep",
+      "position": 3,
+      "name": "Save Full HD MP4 With Audio",
+      "text": "Click Download—our client-side FFmpeg engine automatically merges the 1080p/720p video stream with high-quality audio."
+    }
+  ]
+}
   </script>
 
   <!-- Schema.org FAQPage for Google Rich SERP Snippets -->
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "Is this a working alternative to SaveFrom.net?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes! With SaveFrom.net shutting down and suffering from domain seizures and intrusive adware, Download Reels was created as a clean, open-source replacement with 0 ads, 1080p MP4 video, and 320kbps MP3 audio downloads."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Can I convert YouTube videos and shorts to 320kbps MP3?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. When you paste any YouTube video or short, select the MP3 Audio (320 kbps Ultra HQ) pill or click Convert Format to encode the stream directly in your browser using our client-side FFmpeg WebAssembly engine."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How does the client-side FFmpeg conversion work?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Download Reels loads a WebAssembly compilation of FFmpeg directly inside your web browser. This processes, transcodes, trims, and converts video/audio across multiple CPU cores via Web Workers without uploading your files to any remote server."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How do I download Instagram Reels without a watermark?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Simply copy the Instagram Reel link from the Instagram app or website, paste it into Download Reels, and click Download. You will receive the direct MP4 file in original resolution without any added stamps or watermarks."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Can I download TikTok videos without the TikTok watermark?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes! Download Reels connects directly to clean CDN streams, extracting the pure 1080p/720p HD MP4 video with no floating TikTok logo or username stamps."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How do I save YouTube Shorts in 1080p MP4 format?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Paste any YouTube Shorts or standard YouTube URL into Download Reels. Our client stream resolver extracts progressive and adaptive 1080p/720p MP4 streams and audio tracks for immediate download."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Is Download Reels completely free and safe to use?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes, 100% free and open-source. There is no software to install, no sign-up or registration required, and no tracking cookies stored on your device."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How do I download reels on iPhone or Android mobile devices?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "You can either open download-reels.github.io in your mobile Safari/Chrome browser, or generate a Mobile QR code on your computer screen using the QR button and scan it with your phone camera to download directly."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How do I split a video into multiple reels with a 1st-second hook frame?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "After resolving any video, click 'Clip into Multiple Reels (Client Studio)'. Add multiple start and end timestamps, optionally enable a 1st-second viral Hook Frame banner or upload your brand logo watermark, and export all reels simultaneously using our multi-core WebAssembly studio."
-        }
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Why do 1080p and 720p YouTube Shorts downloads have full audio here?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "YouTube delivers 1080p and 720p streams as separate video-only and audio-only DASH tracks. Download Reels automatically downloads both and losslessly muxes them (-c copy) inside your browser using FFmpeg WebAssembly."
       }
-    ]
-  }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I download multiple YouTube Shorts in bulk as a ZIP file?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes! Switch to the Bulk URLs tab, paste a list of YouTube Shorts links, extract all streams, and click Download All as ZIP."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I convert a YouTube Short to 320kbps MP3 audio?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes, select the MP3 Audio pill or click Convert Format / 320k MP3 to save the audio track in 320kbps MP3 or lossless WAV."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I cut a normal YouTube video into vertical Shorts on this site?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes! Paste any standard YouTube video and click Clip into Multiple Reels to slice multiple short segments and add 1st-second viral hook banners."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Is there any limit on how many YouTube Shorts I can download?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "No limits, no registration, and 0 ads—everything runs client-side in your browser."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I transfer a downloaded YouTube Short from PC to my phone?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Click the QR button next to the download button and scan the QR code with your iPhone or Android camera."
+      }
+    }
+  ]
+}
   </script>
 </head>
 <body class="bg-background text-foreground antialiased selection:bg-zinc-800 selection:text-zinc-100">
@@ -697,12 +673,8 @@
     <!-- ======================================================== -->
     <section class="mb-14 border-t border-border pt-10">
       <div class="text-center mb-8">
-        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground" data-i18n="howto.title">
-          How to Download Reels & Videos in 3 Simple Steps
-        </h2>
-        <p class="text-xs sm:text-sm text-muted-foreground mt-1 max-w-md mx-auto" data-i18n="howto.subtitle">
-          Save public reels, shorts, and video clips directly to your PC, Mac, iPhone, or Android device.
-        </p>
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground">How to Download YouTube Shorts in 1080p MP4 With Audio</h2>
+        <p class="text-xs sm:text-sm text-muted-foreground mt-1 max-w-md mx-auto">Save vertical YouTube Shorts in Full HD with lossless audio remuxing.</p>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -711,30 +683,24 @@
           <div class="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center font-mono text-xs font-semibold text-foreground">
             1
           </div>
-          <h3 class="text-sm font-semibold text-foreground" data-i18n="howto.s1Title">Copy Video Link</h3>
-          <p class="text-xs text-muted-foreground leading-relaxed" data-i18n="howto.s1Desc">
-            Open Instagram, TikTok, or YouTube. Click the "Share" button on any reel or short and copy the link.
-          </p>
+          <h3 class="text-sm font-semibold text-foreground">Copy YouTube Shorts URL</h3>
+          <p class="text-xs text-muted-foreground leading-relaxed">Tap the Share button on any YouTube Short (youtube.com/shorts/...) and copy the link.</p>
         </div>
 
         <div class="rounded-lg border border-border bg-card p-5 relative space-y-2">
           <div class="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center font-mono text-xs font-semibold text-foreground">
             2
           </div>
-          <h3 class="text-sm font-semibold text-foreground" data-i18n="howto.s2Title">Paste URL Above</h3>
-          <p class="text-xs text-muted-foreground leading-relaxed" data-i18n="howto.s2Desc">
-            Paste the copied link into the input bar at the top of this page and click the Download button.
-          </p>
+          <h3 class="text-sm font-semibold text-foreground">Paste Link & Choose Resolution</h3>
+          <p class="text-xs text-muted-foreground leading-relaxed">Paste the link above to reveal 1080p HD, 720p HD, 360p MP4, and MP3 audio formats.</p>
         </div>
 
         <div class="rounded-lg border border-border bg-card p-5 relative space-y-2">
           <div class="w-7 h-7 rounded-full bg-secondary border border-border flex items-center justify-center font-mono text-xs font-semibold text-foreground">
             3
           </div>
-          <h3 class="text-sm font-semibold text-foreground" data-i18n="howto.s3Title">Save Clean MP4</h3>
-          <p class="text-xs text-muted-foreground leading-relaxed" data-i18n="howto.s3Desc">
-            Choose your preferred quality (1080p Full HD, 720p, or MP3 audio) and download with zero watermark.
-          </p>
+          <h3 class="text-sm font-semibold text-foreground">Save Full HD MP4 With Audio</h3>
+          <p class="text-xs text-muted-foreground leading-relaxed">Click Download—our client-side FFmpeg engine automatically merges the 1080p/720p video stream with high-quality audio.</p>
         </div>
 
       </div>
@@ -872,106 +838,58 @@
     <!-- ======================================================== -->
     <section class="mb-14 border-t border-border pt-10">
       <div class="text-center mb-8">
-        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground" data-i18n="faq.title">
-          Frequently Asked Questions
-        </h2>
-        <p class="text-xs sm:text-sm text-muted-foreground mt-1" data-i18n="faq.subtitle">
-          Everything you need to know about downloading reels and videos online.
-        </p>
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Frequently Asked Questions — YouTube Shorts Downloader (1080p)</h2>
+        <p class="text-xs sm:text-sm text-muted-foreground mt-1">Save vertical YouTube Shorts in Full HD with lossless audio remuxing.</p>
       </div>
-
       <div class="space-y-3 text-xs">
-        
+
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
             <span>Why do 1080p and 720p YouTube Shorts downloads have full audio here?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed">
-            YouTube serves 1080p and 720p streams as separate video and audio tracks (DASH). Download Reels automatically merges the HD video track and HQ audio track inside your browser using FFmpeg WebAssembly (-c copy) with zero quality loss.
-          </p>
+          <p class="text-muted-foreground mt-2 leading-relaxed">YouTube delivers 1080p and 720p streams as separate video-only and audio-only DASH tracks. Download Reels automatically downloads both and losslessly muxes them (-c copy) inside your browser using FFmpeg WebAssembly.</p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span data-i18n="faq.q2">Can I convert YouTube videos and shorts to 320kbps MP3?</span>
+            <span>Can I download multiple YouTube Shorts in bulk as a ZIP file?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a2">
-            Yes. When you paste any YouTube video or short, select the "MP3 Audio (320 kbps Ultra HQ)" pill or click "Convert Format" to encode the stream directly in your browser using our client-side FFmpeg WebAssembly engine.
-          </p>
+          <p class="text-muted-foreground mt-2 leading-relaxed">Yes! Switch to the Bulk URLs tab, paste a list of YouTube Shorts links, extract all streams, and click Download All as ZIP.</p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span data-i18n="faq.q3">How does the client-side FFmpeg conversion work?</span>
+            <span>Can I convert a YouTube Short to 320kbps MP3 audio?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a3">
-            Download Reels loads a WebAssembly compilation of FFmpeg directly inside your web browser. This processes, transcodes, trims, and converts video/audio on your own computer CPU without uploading your files to any remote server, guaranteeing 100% privacy and zero server queues.
-          </p>
-        </details>
-        
-        <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
-          <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span data-i18n="faq.q4">How do I download Instagram Reels without a watermark?</span>
-            <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a4">
-            Copy the reel link directly from the Instagram mobile app or desktop browser, paste it into the URL bar above, and click Download. You will receive the original high-resolution MP4 video file with no added stamps or watermarks.
-          </p>
+          <p class="text-muted-foreground mt-2 leading-relaxed">Yes, select the MP3 Audio pill or click Convert Format / 320k MP3 to save the audio track in 320kbps MP3 or lossless WAV.</p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span data-i18n="faq.q5">Can I download TikTok videos without the TikTok watermark?</span>
+            <span>Can I cut a normal YouTube video into vertical Shorts on this site?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a5">
-            Yes! Download Reels connects directly to clean CDN streams via TikWM API, extracting the pure 1080p/720p HD MP4 video with no floating TikTok logo or username stamps.
-          </p>
+          <p class="text-muted-foreground mt-2 leading-relaxed">Yes! Paste any standard YouTube video and click Clip into Multiple Reels to slice multiple short segments and add 1st-second viral hook banners.</p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span data-i18n="faq.q6">How do I save YouTube Shorts in 1080p MP4 format?</span>
+            <span>Is there any limit on how many YouTube Shorts I can download?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a6">
-            Paste any YouTube Shorts or standard YouTube URL into Download Reels. Our client stream resolver instantly extracts the progressive MP4 streams and audio tracks for immediate download.
-          </p>
+          <p class="text-muted-foreground mt-2 leading-relaxed">No limits, no registration, and 0 ads—everything runs client-side in your browser.</p>
         </details>
 
         <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
           <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span data-i18n="faq.q7">Is Download Reels completely free and safe to use?</span>
+            <span>How do I transfer a downloaded YouTube Short from PC to my phone?</span>
             <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
           </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a7">
-            Yes, 100% free and open-source. There is no software to install, no sign-up or registration required, and no tracking cookies stored on your device.
-          </p>
+          <p class="text-muted-foreground mt-2 leading-relaxed">Click the QR button next to the download button and scan the QR code with your iPhone or Android camera.</p>
         </details>
-
-        <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
-          <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span data-i18n="faq.q8">How do I download reels on iPhone or Android mobile devices?</span>
-            <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a8">
-            You can either open download-reels.github.io in your mobile Safari/Chrome browser, or generate a Mobile QR code on your computer screen using the QR button and scan it with your phone camera to download directly.
-          </p>
-        </details>
-
-        <details class="group rounded-lg border border-border bg-card p-4 transition [&_svg]:open:-rotate-180">
-          <summary class="flex cursor-pointer items-center justify-between font-semibold text-foreground">
-            <span data-i18n="faq.q9">How do I split a video into multiple reels with a 1st-second hook frame?</span>
-            <svg class="w-4 h-4 text-muted-foreground transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-          </summary>
-          <p class="text-muted-foreground mt-2 leading-relaxed" data-i18n="faq.a9">
-            After resolving any video, click 'Clip into Multiple Reels (Client Studio)'. Add multiple start and end timestamps, optionally enable a 1st-second viral Hook Frame banner or upload your brand logo watermark, and export all reels simultaneously using our multi-core WebAssembly studio.
-          </p>
-        </details>
-
       </div>
     </section>
 
