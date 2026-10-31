@@ -288,6 +288,9 @@ document.addEventListener("DOMContentLoaded", () => {
       videoThumbnail.classList.add("hidden");
     } else if (media.thumbnailUrl) {
       videoThumbnail.src = media.thumbnailUrl;
+      videoThumbnail.onerror = function() {
+        if (media.id) this.src = `https://i.ytimg.com/vi/${media.id}/hqdefault.jpg`;
+      };
       videoThumbnail.classList.remove("hidden");
       videoPlayer.classList.add("hidden");
     }
@@ -1204,8 +1207,240 @@ document.addEventListener("DOMContentLoaded", () => {
     const exportClipsBtn = document.getElementById("exportClipsBtn");
     const exportClipsBtnText = document.getElementById("exportClipsBtnText");
 
+    // Studio Tabs
+    const tabSegmentsBtn = document.getElementById("tabSegmentsBtn");
+    const tabHookBtn = document.getElementById("tabHookBtn");
+    const tabLogoBtn = document.getElementById("tabLogoBtn");
+    const panelSegments = document.getElementById("panelSegments");
+    const panelHook = document.getElementById("panelHook");
+    const panelLogo = document.getElementById("panelLogo");
+
+    // Live Overlays on Player
+    const clipLogoOverlay = document.getElementById("clipLogoOverlay");
+    const clipLogoImg = document.getElementById("clipLogoImg");
+    const clipHookOverlay = document.getElementById("clipHookOverlay");
+    const clipHookBannerBox = document.getElementById("clipHookBannerBox");
+    const clipHookBannerText = document.getElementById("clipHookBannerText");
+
+    // Hook Frame Controls
+    const enableHookToggle = document.getElementById("enableHookToggle");
+    const hookControlsGroup = document.getElementById("hookControlsGroup");
+    const hookTextInput = document.getElementById("hookTextInput");
+    const hookStyleSelect = document.getElementById("hookStyleSelect");
+    const hookDurationSelect = document.getElementById("hookDurationSelect");
+    const hookImageUpload = document.getElementById("hookImageUpload");
+
+    // Logo & Branding Controls
+    const enableLogoToggle = document.getElementById("enableLogoToggle");
+    const logoControlsGroup = document.getElementById("logoControlsGroup");
+    const logoFileInput = document.getElementById("logoFileInput");
+    const logoPositionSelect = document.getElementById("logoPositionSelect");
+    const logoOpacityRange = document.getElementById("logoOpacityRange");
+
     let clipSegments = [];
     let previewTimer = null;
+    let uploadedLogoBuffer = null;
+    let uploadedHookBuffer = null;
+
+    // Tabs switching
+    function switchTab(activeTab) {
+      const tabs = [
+        { btn: tabSegmentsBtn, panel: panelSegments, id: "segments" },
+        { btn: tabHookBtn, panel: panelHook, id: "hook" },
+        { btn: tabLogoBtn, panel: panelLogo, id: "logo" }
+      ];
+
+      tabs.forEach(t => {
+        if (t.id === activeTab) {
+          t.panel.classList.remove("hidden");
+          t.btn.className = "flex-1 py-1.5 rounded-md font-medium text-foreground bg-card shadow-sm transition cursor-pointer flex items-center justify-center gap-1.5";
+        } else {
+          t.panel.classList.add("hidden");
+          t.btn.className = "flex-1 py-1.5 rounded-md font-medium text-muted-foreground hover:text-foreground transition cursor-pointer flex items-center justify-center gap-1.5";
+        }
+      });
+    }
+
+    if (tabSegmentsBtn) tabSegmentsBtn.addEventListener("click", () => switchTab("segments"));
+    if (tabHookBtn) tabHookBtn.addEventListener("click", () => switchTab("hook"));
+    if (tabLogoBtn) tabLogoBtn.addEventListener("click", () => switchTab("logo"));
+
+    // Hook Frame Live Updates
+    function updateHookBannerPreview() {
+      if (!clipHookOverlay || !clipHookBannerText || !clipHookBannerBox) return;
+      const isEnabled = enableHookToggle && enableHookToggle.checked;
+      
+      if (isEnabled && (hookTextInput?.value?.trim() || uploadedHookBuffer)) {
+        clipHookOverlay.classList.remove("hidden");
+        const text = (hookTextInput?.value?.trim() || "WAIT FOR THE END 😱").toUpperCase();
+        clipHookBannerText.textContent = text;
+
+        const style = hookStyleSelect ? hookStyleSelect.value : "yellow";
+        if (style === "red") {
+          clipHookBannerBox.className = "px-4 py-2 rounded-lg bg-red-950/90 border border-red-500 shadow-xl max-w-sm text-center";
+          clipHookBannerText.className = "font-extrabold text-xs sm:text-sm text-white uppercase tracking-wide leading-tight drop-shadow";
+        } else if (style === "white") {
+          clipHookBannerBox.className = "px-4 py-2 rounded-lg bg-white/95 border border-zinc-900 shadow-xl max-w-sm text-center";
+          clipHookBannerText.className = "font-extrabold text-xs sm:text-sm text-black uppercase tracking-wide leading-tight";
+        } else if (style === "gradient") {
+          clipHookBannerBox.className = "px-4 py-2 rounded-lg bg-gradient-to-r from-purple-900/90 to-indigo-900/90 border border-purple-400 shadow-xl max-w-sm text-center";
+          clipHookBannerText.className = "font-extrabold text-xs sm:text-sm text-purple-200 uppercase tracking-wide leading-tight drop-shadow";
+        } else {
+          clipHookBannerBox.className = "px-4 py-2 rounded-lg bg-black/85 border border-yellow-400/60 shadow-xl max-w-sm text-center";
+          clipHookBannerText.className = "font-extrabold text-xs sm:text-sm text-yellow-300 uppercase tracking-wide leading-tight drop-shadow";
+        }
+      } else {
+        clipHookOverlay.classList.add("hidden");
+      }
+    }
+
+    if (enableHookToggle) {
+      enableHookToggle.addEventListener("change", () => {
+        if (enableHookToggle.checked) {
+          hookControlsGroup.classList.remove("opacity-50", "pointer-events-none");
+          if (!hookTextInput.value) hookTextInput.value = "WAIT FOR THE END 😱";
+        } else {
+          hookControlsGroup.classList.add("opacity-50", "pointer-events-none");
+        }
+        updateHookBannerPreview();
+      });
+    }
+
+    if (hookTextInput) {
+      hookTextInput.addEventListener("input", updateHookBannerPreview);
+    }
+    if (hookStyleSelect) {
+      hookStyleSelect.addEventListener("change", updateHookBannerPreview);
+    }
+
+    // Hook Viral Template Buttons
+    document.querySelectorAll(".hook-template-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        if (hookTextInput) {
+          hookTextInput.value = btn.textContent.trim();
+          if (enableHookToggle && !enableHookToggle.checked) {
+            enableHookToggle.checked = true;
+            hookControlsGroup.classList.remove("opacity-50", "pointer-events-none");
+          }
+          updateHookBannerPreview();
+        }
+      });
+    });
+
+    // Custom Hook Image Upload
+    if (hookImageUpload) {
+      hookImageUpload.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          uploadedHookBuffer = new Uint8Array(reader.result);
+          showToast("Custom hook cover loaded!");
+          updateHookBannerPreview();
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    // Logo & Branding Live Updates
+    function updateLogoPosition() {
+      if (!clipLogoOverlay) return;
+      const pos = logoPositionSelect ? logoPositionSelect.value : "top-right";
+      clipLogoOverlay.className = "absolute pointer-events-none transition-all duration-200 " + (
+        pos === "top-left" ? "top-4 left-4" :
+        pos === "bottom-right" ? "bottom-4 right-4" :
+        pos === "bottom-left" ? "bottom-4 left-4" :
+        "top-4 right-4"
+      );
+    }
+
+    if (enableLogoToggle) {
+      enableLogoToggle.addEventListener("change", () => {
+        if (enableLogoToggle.checked) {
+          logoControlsGroup.classList.remove("opacity-50", "pointer-events-none");
+          clipLogoOverlay.classList.remove("hidden");
+        } else {
+          logoControlsGroup.classList.add("opacity-50", "pointer-events-none");
+          clipLogoOverlay.classList.add("hidden");
+        }
+      });
+    }
+
+    if (logoFileInput) {
+      logoFileInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // For live player preview
+        const url = URL.createObjectURL(file);
+        if (clipLogoImg) {
+          clipLogoImg.src = url;
+          clipLogoOverlay.classList.remove("hidden");
+          if (enableLogoToggle && !enableLogoToggle.checked) {
+            enableLogoToggle.checked = true;
+            logoControlsGroup.classList.remove("opacity-50", "pointer-events-none");
+          }
+        }
+
+        // For FFmpeg WASM processing
+        const reader = new FileReader();
+        reader.onload = () => {
+          uploadedLogoBuffer = new Uint8Array(reader.result);
+          showToast("Logo watermark ready!");
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    if (logoPositionSelect) {
+      logoPositionSelect.addEventListener("change", updateLogoPosition);
+    }
+    if (logoOpacityRange) {
+      logoOpacityRange.addEventListener("input", () => {
+        if (clipLogoOverlay) {
+          clipLogoOverlay.style.opacity = `${logoOpacityRange.value / 100}`;
+        }
+      });
+    }
+
+    // Helper: Generate crisp Canvas PNG Blob for Hook Banner
+    async function generateHookCanvasBuffer(text, style = "yellow") {
+      const canvas = document.createElement("canvas");
+      canvas.width = 720;
+      canvas.height = 160;
+      const ctx = canvas.getContext("2d");
+
+      const themes = {
+        yellow: { bg: "rgba(0,0,0,0.88)", border: "#facc15", text: "#fde047" },
+        red: { bg: "rgba(153,27,27,0.92)", border: "#f87171", text: "#ffffff" },
+        white: { bg: "rgba(255,255,255,0.96)", border: "#18181b", text: "#000000" },
+        gradient: { bg: "rgba(88,28,135,0.92)", border: "#c084fc", text: "#ffffff" }
+      };
+      const theme = themes[style] || themes.yellow;
+
+      const bannerW = 660;
+      const bannerH = 100;
+      const bannerX = (canvas.width - bannerW) / 2;
+      const bannerY = 24;
+
+      ctx.fillStyle = theme.bg;
+      ctx.strokeStyle = theme.border;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.roundRect(bannerX, bannerY, bannerW, bannerH, 18);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = theme.text;
+      ctx.font = "bold 32px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text.toUpperCase(), canvas.width / 2, bannerY + bannerH / 2);
+
+      const blob = await new Promise(r => canvas.toBlob(r, "image/png"));
+      const ab = await blob.arrayBuffer();
+      return new Uint8Array(ab);
+    }
 
     if (openClipModalBtn) {
       openClipModalBtn.addEventListener("click", () => {
@@ -1228,6 +1463,8 @@ document.addEventListener("DOMContentLoaded", () => {
           ];
         }
         renderSegments();
+        updateLogoPosition();
+        updateHookBannerPreview();
       });
     }
 
@@ -1307,7 +1544,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       clipSegments.forEach((seg, index) => {
         const card = document.createElement("div");
-        card.className = "p-2.5 rounded-md border border-border bg-secondary/40 space-y-2";
+        card.className = "p-2.5 rounded-lg border border-border bg-card shadow-sm space-y-2";
 
         const startSec = window.mediaConverterEngine.parseTimeToSeconds(seg.start);
         const endSec = window.mediaConverterEngine.parseTimeToSeconds(seg.end);
@@ -1322,7 +1559,7 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
             
             <div class="flex items-center gap-1.5">
-              <button class="seg-preview-btn h-6 px-2 rounded border border-border bg-card hover:bg-accent text-[10px] text-foreground font-mono transition cursor-pointer flex items-center gap-1" title="Play preview of this segment">
+              <button class="seg-preview-btn h-6 px-2 rounded border border-border bg-secondary hover:bg-accent text-[10px] text-foreground font-mono transition cursor-pointer flex items-center gap-1" title="Play preview of this segment">
                 <svg class="w-2.5 h-2.5 text-rose-400" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                 <span>Preview</span>
               </button>
@@ -1335,16 +1572,15 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="grid grid-cols-2 gap-2 font-mono text-xs">
             <div>
               <label class="block text-[10px] text-muted-foreground mb-0.5">Start Time (MM:SS or Sec)</label>
-              <input type="text" value="${seg.start}" class="seg-start-input w-full rounded border border-input bg-card px-2 py-1 text-xs text-foreground focus:outline-none">
+              <input type="text" value="${seg.start}" class="seg-start-input w-full rounded border border-input bg-secondary/50 px-2 py-1 text-xs text-foreground focus:outline-none">
             </div>
             <div>
               <label class="block text-[10px] text-muted-foreground mb-0.5">End Time (MM:SS or Sec)</label>
-              <input type="text" value="${seg.end}" class="seg-end-input w-full rounded border border-input bg-card px-2 py-1 text-xs text-foreground focus:outline-none">
+              <input type="text" value="${seg.end}" class="seg-end-input w-full rounded border border-input bg-secondary/50 px-2 py-1 text-xs text-foreground focus:outline-none">
             </div>
           </div>
         `;
 
-        // Event handlers for segment row
         const labelInput = card.querySelector(".seg-label-input");
         const startInput = card.querySelector(".seg-start-input");
         const endInput = card.querySelector(".seg-end-input");
@@ -1395,10 +1631,30 @@ document.addEventListener("DOMContentLoaded", () => {
         clipProgressBox.classList.remove("hidden");
         clipProgressBar.style.width = "5%";
         clipProgressPct.textContent = "5%";
-        clipProgressStatus.textContent = "Starting in-browser clipping...";
+        clipProgressStatus.textContent = "Preparing client-side studio...";
 
         try {
-          const clips = await window.mediaConverterEngine.sliceBatch(streamUrl, clipSegments, {}, (p) => {
+          // Prepare options (Logo watermark & Hook Frame banner)
+          const sliceOptions = {};
+
+          if (enableLogoToggle && enableLogoToggle.checked && uploadedLogoBuffer) {
+            sliceOptions.logoBuffer = uploadedLogoBuffer;
+            sliceOptions.logoPosition = logoPositionSelect ? logoPositionSelect.value : "top-right";
+          }
+
+          if (enableHookToggle && enableHookToggle.checked) {
+            if (uploadedHookBuffer) {
+              sliceOptions.hookBuffer = uploadedHookBuffer;
+            } else {
+              const hookText = hookTextInput?.value?.trim() || "WAIT FOR THE END 😱";
+              const hookStyle = hookStyleSelect ? hookStyleSelect.value : "yellow";
+              sliceOptions.hookBuffer = await generateHookCanvasBuffer(hookText, hookStyle);
+            }
+            const durVal = hookDurationSelect ? hookDurationSelect.value : "2.5";
+            sliceOptions.hookDuration = durVal === "always" ? "always" : parseFloat(durVal);
+          }
+
+          const clips = await window.mediaConverterEngine.sliceBatch(streamUrl, clipSegments, sliceOptions, (p) => {
             clipProgressStatus.textContent = p.message;
             clipProgressBar.style.width = `${p.percent}%`;
             clipProgressPct.textContent = `${p.percent}%`;

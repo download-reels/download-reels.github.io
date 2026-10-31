@@ -32,9 +32,17 @@ class MediaConverterEngine {
       }
 
       const { createFFmpeg } = window.FFmpeg;
+
+      // Check for SharedArrayBuffer support (requires cross-origin isolation COOP/COEP headers)
+      // If SharedArrayBuffer is unavailable (common on GitHub Pages), use single-threaded core-st
+      const hasSharedArrayBuffer = typeof window.SharedArrayBuffer !== "undefined";
+      const corePath = hasSharedArrayBuffer
+        ? "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
+        : "https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js";
+
       this.ffmpeg = createFFmpeg({
         log: false,
-        corePath: "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js",
+        corePath: corePath,
       });
 
       this.ffmpeg.setProgress(({ ratio }) => {
@@ -42,7 +50,22 @@ class MediaConverterEngine {
         onProgress({ stage: "transcoding", percent: pct, message: `Transcoding in browser: ${pct}%` });
       });
 
-      await this.ffmpeg.load();
+      try {
+        await this.ffmpeg.load();
+      } catch (loadErr) {
+        // Fallback to single-threaded core if multi-threaded failed (e.g. SharedArrayBuffer restricted)
+        if (!corePath.includes("core-st")) {
+          console.warn("Multi-threaded FFmpeg core restricted, falling back to single-threaded core-st:", loadErr);
+          this.ffmpeg = createFFmpeg({
+            log: false,
+            corePath: "https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js",
+          });
+          await this.ffmpeg.load();
+        } else {
+          throw loadErr;
+        }
+      }
+
       this.isLoaded = true;
       this.isLoading = false;
       onProgress({ stage: "ready", percent: 100, message: "FFmpeg engine ready!" });
@@ -449,6 +472,17 @@ class MediaConverterEngine {
     const inSource = `source_${Date.now()}.mp4`;
     ffmpeg.FS("writeFile", inSource, videoData);
 
+    const hasOverlays = Boolean(options.logoBuffer || options.hookBuffer);
+    const inLogo = `logo_${Date.now()}.png`;
+    const inHook = `hook_${Date.now()}.png`;
+
+    if (options.logoBuffer) {
+      ffmpeg.FS("writeFile", inLogo, options.logoBuffer);
+    }
+    if (options.hookBuffer) {
+      ffmpeg.FS("writeFile", inHook, options.hookBuffer);
+    }
+
     const results = [];
     const totalClips = segments.length;
 
@@ -474,30 +508,73 @@ class MediaConverterEngine {
         totalClips
       });
 
-      // Stream copy cut with fast seek
-      try {
-        await ffmpeg.run(
-          "-ss", String(startSec),
-          "-to", String(endSec),
-          "-i", inSource,
-          "-c", "copy",
-          "-movflags", "+faststart",
-          outFilename
-        );
-      } catch (fastErr) {
-        console.warn(`Fast stream copy failed for segment ${i + 1}, using ultrafast re-encode:`, fastErr);
-        await ffmpeg.run(
-          "-ss", String(startSec),
-          "-to", String(endSec),
-          "-i", inSource,
+      if (!hasOverlays) {
+        // Stream copy cut with fast seek (instant and lossless)
+        try {
+          await ffmpeg.run(
+            "-ss", String(startSec),
+            "-to", String(endSec),
+            "-i", inSource,
+            "-c", "copy",
+            "-movflags", "+faststart",
+            outFilename
+          );
+        } catch (fastErr) {
+          console.warn(`Fast stream copy failed for segment ${i + 1}, using ultrafast re-encode:`, fastErr);
+          await ffmpeg.run(
+            "-ss", String(startSec),
+            "-to", String(endSec),
+            "-i", inSource,
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-crf", "24",
+            "-c:a", "aac",
+            "-b:a", "128k",
+            "-movflags", "+faststart",
+            outFilename
+          );
+        }
+      } else {
+        // Filter-complex overlay with branding / hook frame
+        const args = ["-ss", String(startSec), "-to", String(endSec), "-i", inSource];
+        const filterChains = [];
+        let curV = "0:v";
+        let inIdx = 1;
+
+        if (options.hookBuffer) {
+          args.push("-i", inHook);
+          const dur = options.hookDuration || 2.5;
+          const durExpr = dur === "always" ? "" : `:enable='between(t,0,${dur})'`;
+          filterChains.push(`[${curV}][${inIdx}]overlay=(W-w)/2:24${durExpr}[v_hook]`);
+          curV = "v_hook";
+          inIdx++;
+        }
+
+        if (options.logoBuffer) {
+          args.push("-i", inLogo);
+          let pos = "W-w-16:16";
+          if (options.logoPosition === "top-left") pos = "16:16";
+          else if (options.logoPosition === "bottom-right") pos = "W-w-16:H-h-16";
+          else if (options.logoPosition === "bottom-left") pos = "16:H-h-16";
+          filterChains.push(`[${curV}][${inIdx}]overlay=${pos}[v_logo]`);
+          curV = "v_logo";
+          inIdx++;
+        }
+
+        args.push(
+          "-filter_complex", filterChains.join(";"),
+          "-map", `[${curV}]`,
+          "-map", "0:a?",
           "-c:v", "libx264",
           "-preset", "ultrafast",
-          "-crf", "24",
+          "-crf", "23",
           "-c:a", "aac",
           "-b:a", "128k",
           "-movflags", "+faststart",
           outFilename
         );
+
+        await ffmpeg.run(...args);
       }
 
       const clipData = ffmpeg.FS("readFile", outFilename);
@@ -525,8 +602,10 @@ class MediaConverterEngine {
       });
     }
 
-    // 3. Clean up source file from virtual FS
+    // 3. Clean up virtual FS
     try {
+      if (options.logoBuffer) ffmpeg.FS("unlink", inLogo);
+      if (options.hookBuffer) ffmpeg.FS("unlink", inHook);
       ffmpeg.FS("unlink", inSource);
     } catch (_) {}
 

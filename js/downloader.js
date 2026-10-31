@@ -600,7 +600,15 @@ class DownloaderEngine {
       title: data.title || "YouTube Video",
       author: data.author || "YouTube Creator",
       authorHandle: null,
-      thumbnailUrl: (data.videoThumbnails && data.videoThumbnails[0]?.url) || thumbnailUrl,
+      thumbnailUrl: (() => {
+        let rawThumb = (data.videoThumbnails && (
+          data.videoThumbnails.find(t => t.quality === "high" || t.quality === "medium" || t.url?.includes("hqdefault"))?.url ||
+          data.videoThumbnails.find(t => !t.url?.includes("maxres"))?.url ||
+          data.videoThumbnails[0]?.url
+        )) || thumbnailUrl;
+        if (rawThumb && rawThumb.startsWith("/")) rawThumb = `https://i.ytimg.com${rawThumb}`;
+        return rawThumb;
+      })(),
       duration: data.lengthSeconds,
       videoUrl: directStreamUrl || formats[0]?.url || null,
       audioUrl: audioUrl,
