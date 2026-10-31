@@ -65,9 +65,21 @@
     <priority>0.9</priority>
   </url>
 
-  <!-- Dedicated High-Intent Platform & Studio Landing Pages -->
+  <!-- Dedicated High-Intent Exact-Match Keyword Landing Pages -->
   <url>
-    <loc>https://download-reels.github.io/reel-clipper-studio.html</loc>
+    <loc>https://download-reels.github.io/youtube-video-cutter.html</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://download-reels.github.io/youtube-to-shorts.html</loc>
+    <lastmod>2026-10-31</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+  </url>
+  <url>
+    <loc>https://download-reels.github.io/youtube-to-mp3.html</loc>
     <lastmod>2026-10-31</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.95</priority>
