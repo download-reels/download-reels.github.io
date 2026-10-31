@@ -722,6 +722,71 @@ class DownloaderEngine {
   }
 
   /**
+   * Resolves a batch of URLs with controlled concurrency
+   * @param {string[]} rawUrls
+   * @param {function} onProgress
+   * @returns {Promise<Array<{ url: string, status: "success"|"error", media?: object, error?: string }>>}
+   */
+  async resolveBatch(rawUrls = [], onProgress = () => {}) {
+    const cleanUrls = Array.from(new Set(
+      rawUrls.map(u => u.trim()).filter(u => u.length > 5 && (u.startsWith("http://") || u.startsWith("https://")))
+    ));
+
+    const results = new Array(cleanUrls.length);
+    const concurrency = 2;
+    let index = 0;
+    let completed = 0;
+
+    const runWorker = async () => {
+      while (index < cleanUrls.length) {
+        const currentIndex = index++;
+        const targetUrl = cleanUrls[currentIndex];
+        
+        onProgress({
+          stage: "resolving_batch",
+          total: cleanUrls.length,
+          completed,
+          currentUrl: targetUrl
+        });
+
+        try {
+          const media = await this.resolve(targetUrl);
+          results[currentIndex] = {
+            url: targetUrl,
+            status: "success",
+            media,
+            error: null
+          };
+        } catch (err) {
+          results[currentIndex] = {
+            url: targetUrl,
+            status: "error",
+            media: null,
+            error: err.message || "Failed to resolve link"
+          };
+        }
+
+        completed++;
+        onProgress({
+          stage: "batch_item_done",
+          total: cleanUrls.length,
+          completed,
+          currentUrl: targetUrl,
+          itemResult: results[currentIndex]
+        });
+      }
+    };
+
+    const workers = [];
+    for (let i = 0; i < Math.min(concurrency, cleanUrls.length); i++) {
+      workers.push(runWorker());
+    }
+
+    await Promise.all(workers);
+    return results;
+  }
+
+  /**
    * Helper to trigger download via anchor tag
    */
   triggerDownloadLink(url, filename) {

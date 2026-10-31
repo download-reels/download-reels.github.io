@@ -227,8 +227,28 @@
       </p>
     </div>
 
-    <!-- Shadcn Input Bar Group -->
-    <div class="w-full mb-4">
+    <!-- Mode Switcher Tabs (Single Video vs Bulk URLs) -->
+    <div class="flex items-center justify-center gap-2 mb-3">
+      <button 
+        id="modeSingleBtn" 
+        class="h-7 px-3 rounded-full text-xs font-medium border border-primary bg-primary text-primary-foreground shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+        <span data-i18n="tab.single">Single Video</span>
+      </button>
+
+      <button 
+        id="modeBulkBtn" 
+        class="h-7 px-3 rounded-full text-xs font-medium border border-border bg-secondary text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition cursor-pointer"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+        <span data-i18n="tab.bulk">Bulk URLs</span>
+        <span class="rounded bg-primary/20 text-primary text-[10px] px-1 font-mono font-semibold">Batch</span>
+      </button>
+    </div>
+
+    <!-- Single URL Input Section -->
+    <div id="singleInputSection" class="w-full mb-4">
       <div class="flex items-center gap-2 p-1.5 rounded-lg border border-border bg-card shadow-sm">
         
         <!-- Platform Icon Indicator -->
@@ -256,7 +276,7 @@
         <!-- Clear Button (×) -->
         <button 
           id="clearBtn" 
-          class="hidden h-8 w-8 rounded text-muted-foreground hover:text-foreground flex items-center justify-center transition"
+          class="hidden h-8 w-8 rounded text-muted-foreground hover:text-foreground flex items-center justify-center transition cursor-pointer"
           title="Clear"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -267,7 +287,7 @@
         <!-- Paste Button -->
         <button 
           id="pasteBtn" 
-          class="hidden sm:inline-flex h-8 px-2.5 items-center gap-1 rounded-md border border-border bg-secondary hover:bg-accent text-xs font-medium text-foreground transition"
+          class="hidden sm:inline-flex h-8 px-2.5 items-center gap-1 rounded-md border border-border bg-secondary hover:bg-accent text-xs font-medium text-foreground transition cursor-pointer"
           title="Paste from clipboard"
         >
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -290,6 +310,52 @@
       </div>
     </div>
 
+    <!-- Bulk URLs Input Section -->
+    <div id="bulkInputSection" class="hidden w-full mb-4">
+      <div class="rounded-lg border border-border bg-card p-3 shadow-sm space-y-2.5">
+        <div class="flex items-center justify-between text-xs text-muted-foreground">
+          <span class="font-medium text-foreground flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+            <span data-i18n="bulk.title">Batch Video Links (one URL per line)</span>
+          </span>
+          <span id="bulkUrlCount" class="font-mono text-[11px]">0 links entered</span>
+        </div>
+
+        <textarea 
+          id="bulkTextarea" 
+          rows="4" 
+          placeholder="https://www.youtube.com/shorts/CtpiSHvU8nE&#10;https://www.tiktok.com/@drama.clip803/video/7701550479792246047&#10;https://www.instagram.com/reel/DfGqtxDTZt_/" 
+          class="w-full bg-secondary/40 rounded-md border border-input p-2.5 text-xs font-mono text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring resize-y leading-relaxed"
+        ></textarea>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-1">
+          <div class="flex items-center gap-2">
+            <button 
+              id="bulkPasteBtn" 
+              class="h-7 px-2.5 rounded-md border border-border bg-secondary hover:bg-accent text-xs font-medium text-foreground flex items-center gap-1 transition cursor-pointer"
+            >
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+              <span data-i18n="input.paste">Paste Clipboard</span>
+            </button>
+            <button 
+              id="bulkClearBtn" 
+              class="h-7 px-2 rounded-md text-xs text-muted-foreground hover:text-foreground transition cursor-pointer"
+            >
+              <span data-i18n="bulk.clear">Clear</span>
+            </button>
+          </div>
+
+          <button 
+            id="bulkExtractBtn" 
+            class="h-8 px-4 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            <span data-i18n="bulk.extractAll">Extract All Links</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Platform Quick Badges -->
     <div class="flex flex-wrap items-center justify-center gap-1.5 mb-8 text-xs text-muted-foreground">
       <span class="text-[11px] font-mono mr-1" data-i18n="sample.label">Sample:</span>
@@ -309,6 +375,43 @@
       <button class="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-border bg-card hover:bg-accent hover:text-foreground text-[11px] font-mono transition cursor-pointer" data-sample-url="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" data-i18n="sample.mp4">
         Direct MP4
       </button>
+    </div>
+
+    <!-- Bulk Results Queue Section -->
+    <div id="bulkResultsSection" class="hidden mb-8 rounded-lg border border-border bg-card p-4 sm:p-5 shadow-sm space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+        <div>
+          <h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
+            <span>📦 Batch Download Queue</span>
+            <span id="bulkQueueStats" class="text-xs font-normal text-muted-foreground font-mono"></span>
+          </h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button 
+            id="bulkDownloadZipBtn" 
+            class="h-8 px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            <span data-i18n="bulk.downloadZip">Download All as ZIP</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bulk Progress Bar -->
+      <div id="bulkProgressBarGroup" class="hidden rounded-md border border-border bg-secondary/30 p-2.5 space-y-1.5">
+        <div class="flex items-center justify-between text-xs font-mono">
+          <span id="bulkProgressMsg" class="text-muted-foreground">Processing queue...</span>
+          <span id="bulkProgressPct" class="text-foreground font-semibold">0%</span>
+        </div>
+        <div class="w-full bg-secondary rounded-full h-1.5 overflow-hidden">
+          <div id="bulkProgressBar" class="bg-primary h-1.5 rounded-full transition-all duration-300" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Queue Cards List -->
+      <div id="bulkQueueList" class="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+        <!-- Rendered dynamically -->
+      </div>
     </div>
 
     <!-- Skeleton Loading Shimmer (shadcn Skeleton Card) -->
@@ -442,6 +545,18 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
               </svg>
               <span data-i18n="result.convertFfmpeg">Convert Format / 320k MP3 (Client FFmpeg)</span>
+            </button>
+
+            <!-- Multi-Segment Reel Clipper Studio Button -->
+            <button 
+              id="openClipModalBtn" 
+              class="w-full h-8 rounded-md border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer"
+              title="Clip this video into multiple Reels/Shorts at custom timelines"
+            >
+              <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"></path>
+              </svg>
+              <span data-i18n="result.clipReels">Clip into Multiple Reels (Client Studio)</span>
             </button>
 
             <!-- Secondary Actions -->
@@ -981,6 +1096,90 @@
   </div>
 
   <!-- ======================================================== -->
+  <!-- MODAL: Multi-Segment Reel Clipper Studio                 -->
+  <!-- ======================================================== -->
+  <div id="clipModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="w-full max-w-xl rounded-lg border border-border bg-background p-5 sm:p-6 space-y-4 shadow-xl max-h-[92vh] flex flex-col">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between pb-3 border-b border-border flex-shrink-0">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-md bg-rose-500/10 text-rose-400 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"></path></svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-semibold text-foreground">Reel Clipper & Multi-Segment Studio</h3>
+            <p class="text-[11px] text-muted-foreground">Select multiple timestamp ranges to export as separate Reel/Short MP4 clips.</p>
+          </div>
+        </div>
+        <button id="closeClipModalBtn" class="text-muted-foreground hover:text-foreground p-1 transition cursor-pointer">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
+        
+        <!-- Video Mini Player with Current Time Display -->
+        <div class="rounded-lg border border-border bg-card p-3 space-y-2">
+          <div class="flex items-center justify-between font-mono text-[11px] text-muted-foreground">
+            <span>Video Time: <strong id="clipCurrentTimeText" class="text-foreground">00:00</strong> / <span id="clipDurationText">00:00</span></span>
+            <div class="flex items-center gap-1.5">
+              <button id="clipSetStartBtn" class="h-6 px-2 rounded bg-secondary hover:bg-accent text-[10px] text-foreground font-medium transition cursor-pointer" title="Set current playback time as Start on active clip">
+                ⏱ Set Start
+              </button>
+              <button id="clipSetEndBtn" class="h-6 px-2 rounded bg-secondary hover:bg-accent text-[10px] text-foreground font-medium transition cursor-pointer" title="Set current playback time as End on active clip">
+                ⏱ Set End
+              </button>
+            </div>
+          </div>
+          <video id="clipMiniPlayer" controls playsinline class="w-full max-h-[190px] rounded bg-black/60 object-contain"></video>
+        </div>
+
+        <!-- Segments Management Header -->
+        <div class="flex items-center justify-between pt-1">
+          <span class="font-semibold text-foreground">Clip Timelines & Segments</span>
+          <div class="flex items-center gap-1.5">
+            <button id="addPreset15Btn" class="h-6 px-2 rounded border border-border bg-secondary hover:bg-accent text-[10px] font-mono transition cursor-pointer">+15s Reel</button>
+            <button id="addPreset30Btn" class="h-6 px-2 rounded border border-border bg-secondary hover:bg-accent text-[10px] font-mono transition cursor-pointer">+30s Reel</button>
+            <button id="addSegmentBtn" class="h-6 px-2.5 rounded bg-primary text-primary-foreground hover:bg-primary/90 text-[10px] font-medium flex items-center gap-1 transition cursor-pointer">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+              <span>Add Segment</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Segments List -->
+        <div id="segmentsContainer" class="space-y-2">
+          <!-- Segment rows dynamically rendered -->
+        </div>
+
+        <!-- Progress Box -->
+        <div id="clipProgressBox" class="hidden rounded-md border border-border bg-card p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <span id="clipProgressStatus" class="font-mono text-[11px] text-muted-foreground">Cutting clips...</span>
+            <span id="clipProgressPct" class="font-mono text-[11px] text-foreground font-semibold">0%</span>
+          </div>
+          <div class="w-full bg-secondary rounded-full h-1.5 overflow-hidden">
+            <div id="clipProgressBar" class="bg-rose-500 h-1.5 rounded-full transition-all duration-300" style="width: 0%;"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="pt-3 border-t border-border flex items-center justify-between flex-shrink-0">
+        <span class="text-[10px] text-muted-foreground font-mono">100% Client-Side FFmpeg</span>
+        <button id="exportClipsBtn" class="h-8 px-4 rounded-md bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+          <span id="exportClipsBtnText">Export All Reels (ZIP)</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
   <!-- MODAL: Mobile QR Code (shadcn Dialog)                    -->
   <!-- ======================================================== -->
   <div id="qrModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -1043,6 +1242,7 @@
 
   <!-- Scripts -->
   <script src="js/qrcode.min.js"></script>
+  <script src="js/jszip.min.js"></script>
   <script src="js/platforms.js"></script>
   <script src="js/converter.js"></script>
   <script src="js/downloader.js"></script>

@@ -400,6 +400,162 @@ class MediaConverterEngine {
       throw err;
     }
   }
+
+  /**
+   * Helper to parse time string ("15", "00:15", "1:45", "01:45:00") into seconds
+   */
+  parseTimeToSeconds(input) {
+    if (typeof input === "number") return Math.max(0, input);
+    if (!input || typeof input !== "string") return 0;
+    const parts = input.trim().split(":").map(Number);
+    if (parts.some(isNaN)) return 0;
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    if (parts.length === 1) return parts[0];
+    return 0;
+  }
+
+  /**
+   * Formats seconds into MM:SS string
+   */
+  formatSecondsToTime(seconds) {
+    const s = Math.floor(Math.max(0, seconds));
+    const m = Math.floor(s / 60);
+    const remSec = s % 60;
+    return `${String(m).padStart(2, "0")}:${String(remSec).padStart(2, "0")}`;
+  }
+
+  /**
+   * Slices multiple segments/reels from a single video source using FFmpeg WebAssembly.
+   * @param {string} sourceUrl - Video stream URL
+   * @param {Array<{ label: string, start: number|string, end: number|string }>} segments
+   * @param {object} options - Slicing options
+   * @param {function} onProgress - Progress reporting callback
+   * @returns {Promise<Array<{ name: string, blob: Blob, url: string, size: number, start: number, end: number }>>}
+   */
+  async sliceBatch(sourceUrl, segments = [], options = {}, onProgress = () => {}) {
+    if (!segments || segments.length === 0) {
+      throw new Error("No clip segments specified for export.");
+    }
+
+    onProgress({ stage: "fetching", percent: 5, message: "Fetching source video stream into browser..." });
+
+    // 1. Fetch source video once
+    const videoData = await this.fetchBufferWithProgress(sourceUrl, "Source Video", 5, 30, onProgress);
+
+    onProgress({ stage: "init_ffmpeg", percent: 35, message: "Initializing FFmpeg WebAssembly..." });
+    const ffmpeg = await this.loadFFmpeg(onProgress);
+
+    const inSource = `source_${Date.now()}.mp4`;
+    ffmpeg.FS("writeFile", inSource, videoData);
+
+    const results = [];
+    const totalClips = segments.length;
+
+    // 2. Process each segment
+    for (let i = 0; i < totalClips; i++) {
+      const seg = segments[i];
+      const startSec = this.parseTimeToSeconds(seg.start);
+      const endSec = this.parseTimeToSeconds(seg.end);
+      const duration = Math.max(1, endSec - startSec);
+
+      const clipPctStart = 40 + Math.round((i / totalClips) * 50);
+      const clipPctEnd = 40 + Math.round(((i + 1) / totalClips) * 50);
+
+      const label = (seg.label || `Reel_${i + 1}`).replace(/[^a-zA-Z0-9_-]/g, "_");
+      const outFilename = `clip_${i + 1}_${Date.now()}.mp4`;
+      const exportName = `${label}_${this.formatSecondsToTime(startSec).replace(":", "m")}s_${this.formatSecondsToTime(endSec).replace(":", "m")}s.mp4`;
+
+      onProgress({
+        stage: "clipping",
+        percent: clipPctStart,
+        message: `Slicing ${seg.label || `Reel #${i + 1}`} (${i + 1}/${totalClips})...`,
+        currentClip: i + 1,
+        totalClips
+      });
+
+      // Stream copy cut with fast seek
+      try {
+        await ffmpeg.run(
+          "-ss", String(startSec),
+          "-to", String(endSec),
+          "-i", inSource,
+          "-c", "copy",
+          "-movflags", "+faststart",
+          outFilename
+        );
+      } catch (fastErr) {
+        console.warn(`Fast stream copy failed for segment ${i + 1}, using ultrafast re-encode:`, fastErr);
+        await ffmpeg.run(
+          "-ss", String(startSec),
+          "-to", String(endSec),
+          "-i", inSource,
+          "-c:v", "libx264",
+          "-preset", "ultrafast",
+          "-crf", "24",
+          "-c:a", "aac",
+          "-b:a", "128k",
+          "-movflags", "+faststart",
+          outFilename
+        );
+      }
+
+      const clipData = ffmpeg.FS("readFile", outFilename);
+      try {
+        ffmpeg.FS("unlink", outFilename);
+      } catch (_) {}
+
+      const blob = new Blob([clipData.buffer], { type: "video/mp4" });
+      results.push({
+        name: exportName,
+        blob,
+        url: URL.createObjectURL(blob),
+        size: blob.size,
+        start: startSec,
+        end: endSec,
+        duration
+      });
+
+      onProgress({
+        stage: "clip_done",
+        percent: clipPctEnd,
+        message: `Finished ${seg.label || `Reel #${i + 1}`} (${i + 1}/${totalClips})`,
+        currentClip: i + 1,
+        totalClips
+      });
+    }
+
+    // 3. Clean up source file from virtual FS
+    try {
+      ffmpeg.FS("unlink", inSource);
+    } catch (_) {}
+
+    onProgress({ stage: "ready", percent: 95, message: "All reels sliced successfully!" });
+    return results;
+  }
+
+  /**
+   * Bundles an array of { name, blob } files into a single zip archive Blob
+   */
+  async createZipArchive(files = [], onProgress = () => {}) {
+    if (!window.JSZip) {
+      try {
+        await this.loadScript("js/jszip.min.js");
+      } catch (_) {
+        await this.loadScript("https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js");
+      }
+    }
+
+    const zip = new window.JSZip();
+    files.forEach(f => {
+      zip.file(f.name, f.blob);
+    });
+
+    return await zip.generateAsync({ type: "blob" }, (meta) => {
+      const pct = Math.round(meta.percent);
+      onProgress({ stage: "zipping", percent: pct, message: `Packaging ZIP archive: ${pct}%` });
+    });
+  }
 }
 
 // Global converter instance
