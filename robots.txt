@@ -12,6 +12,7 @@ Allow: /
 User-agent: Applebot
 Allow: /
 
-# Sitemap location
+# Sitemap locations
 Sitemap: https://download-reels.github.io/sitemap.xml
+Sitemap: https://download-reels.github.io/sitemap.txt
 
