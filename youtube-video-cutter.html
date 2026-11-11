@@ -267,22 +267,31 @@
       </p>
     </div>
 
-    <!-- Mode Switcher Tabs (Single Video vs Bulk URLs) -->
-    <div class="flex items-center justify-center gap-2 mb-3">
+    <!-- Mode Switcher Tabs (Clipper Studio vs Downloader vs Bulk) -->
+    <div class="flex flex-wrap items-center justify-center gap-2 mb-3">
+      <button 
+        id="modeStudioBtn" 
+        class="h-8 px-3.5 rounded-full text-xs font-semibold border border-rose-500/50 bg-rose-600 hover:bg-rose-500 text-white shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"></path></svg>
+        <span>✂️ Reel Clipper Studio</span>
+        <span class="rounded bg-black/40 text-[10px] px-1 font-mono font-bold text-amber-300">OPUS ALT</span>
+      </button>
+
       <button 
         id="modeSingleBtn" 
-        class="h-7 px-3 rounded-full text-xs font-medium border border-primary bg-primary text-primary-foreground shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+        class="h-8 px-3 rounded-full text-xs font-medium border border-border bg-secondary text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition cursor-pointer"
       >
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-        <span data-i18n="tab.single">Single Video</span>
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+        <span>Quick Downloader</span>
       </button>
 
       <button 
         id="modeBulkBtn" 
-        class="h-7 px-3 rounded-full text-xs font-medium border border-border bg-secondary text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition cursor-pointer"
+        class="h-8 px-3 rounded-full text-xs font-medium border border-border bg-secondary text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition cursor-pointer"
       >
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-        <span data-i18n="tab.bulk">Bulk URLs</span>
+        <span>Bulk URLs</span>
         <span class="rounded bg-primary/20 text-primary text-[10px] px-1 font-mono font-semibold">Batch</span>
       </button>
     </div>
@@ -564,40 +573,42 @@
           <!-- Action Buttons -->
           <div class="pt-2 space-y-2">
             
-            <!-- Primary Download -->
-            <button 
-              id="primaryDownloadBtn" 
-              class="w-full h-9 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-              </svg>
-              <span data-i18n="result.downloadMp4">Download MP4</span>
-            </button>
-
-            <!-- Inline FFmpeg WebAssembly Converter Button -->
-            <button 
-              id="openConvertModalBtn" 
-              class="w-full h-8 rounded-md border border-border bg-secondary hover:bg-accent text-foreground text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer"
-              title="Convert to 320kbps MP3, WAV, WebM, or GIF client-side"
-            >
-              <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-              </svg>
-              <span data-i18n="result.convertFfmpeg">Convert Format / 320k MP3 (Client FFmpeg)</span>
-            </button>
-
-            <!-- Multi-Segment Reel Clipper Studio Button -->
+            <!-- HERO ACTION: Multi-Segment Reel Clipper Studio Button (OpusClip Alternative) -->
             <button 
               id="openClipModalBtn" 
-              class="w-full h-8 rounded-md border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 text-xs font-medium flex items-center justify-center gap-2 transition cursor-pointer"
-              title="Clip this video into multiple Reels/Shorts at custom timelines"
+              class="w-full h-10 rounded-md bg-gradient-to-r from-rose-600 via-pink-600 to-rose-600 hover:from-rose-500 hover:to-rose-500 text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-rose-950/40 transition cursor-pointer"
+              title="Open Pro Studio: Crop 9:16, Auto Chapters, Hook Banners & Multi-Core WASM"
             >
-              <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z"></path>
               </svg>
-              <span data-i18n="result.clipReels">Clip into Multiple Reels (Client Studio)</span>
+              <span>✂️ Split into Viral Shorts / Reels (Pro Studio)</span>
+              <span class="rounded bg-black/40 text-[10px] px-1.5 py-0.5 font-mono text-yellow-300 font-bold uppercase">100% Free</span>
             </button>
+
+            <!-- Dual Secondary Buttons: Direct MP4 & 320k MP3 -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button 
+                id="primaryDownloadBtn" 
+                class="h-8 rounded-md bg-secondary hover:bg-accent text-foreground text-xs font-semibold border border-border flex items-center justify-center gap-1.5 transition cursor-pointer"
+              >
+                <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                <span data-i18n="result.downloadMp4">Download Full MP4</span>
+              </button>
+
+              <button 
+                id="openConvertModalBtn" 
+                class="h-8 rounded-md border border-border bg-secondary hover:bg-accent text-foreground text-xs font-medium flex items-center justify-center gap-1.5 transition cursor-pointer"
+                title="Convert to 320kbps MP3, WAV, WebM, or GIF client-side"
+              >
+                <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                <span data-i18n="result.convertFfmpeg">Convert 320k MP3 / Audio</span>
+              </button>
+            </div>
 
             <!-- Secondary Actions -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs">

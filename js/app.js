@@ -848,9 +848,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // -------------------------------------------------------------
-  // Mode Switcher (Single URL vs Bulk URLs)
+  // Mode Switcher (Reel Studio vs Quick Single vs Bulk URLs)
   // -------------------------------------------------------------
   function initModeSwitcher() {
+    const modeStudioBtn = document.getElementById("modeStudioBtn");
     const modeSingleBtn = document.getElementById("modeSingleBtn");
     const modeBulkBtn = document.getElementById("modeBulkBtn");
     const singleInputSection = document.getElementById("singleInputSection");
@@ -858,26 +859,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function setMode(mode) {
       if (!singleInputSection || !bulkInputSection || !modeSingleBtn || !modeBulkBtn) return;
-      if (mode === "bulk") {
+
+      const activeClass = "h-8 px-3.5 rounded-full text-xs font-semibold border border-rose-500/50 bg-rose-600 hover:bg-rose-500 text-white shadow-sm flex items-center gap-1.5 transition cursor-pointer";
+      const inactiveClass = "h-8 px-3 rounded-full text-xs font-medium border border-border bg-secondary text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition cursor-pointer";
+
+      if (mode === "studio") {
+        bulkInputSection.classList.add("hidden");
+        singleInputSection.classList.remove("hidden");
+        if (modeStudioBtn) modeStudioBtn.className = activeClass;
+        modeSingleBtn.className = inactiveClass;
+        modeBulkBtn.className = inactiveClass;
+        if (urlInput) {
+          urlInput.placeholder = "Paste YouTube or video link to launch Reel Clipper Studio...";
+          urlInput.focus();
+        }
+      } else if (mode === "bulk") {
         singleInputSection.classList.add("hidden");
         bulkInputSection.classList.remove("hidden");
-        modeSingleBtn.className = "h-7 px-3 rounded-full text-xs font-medium border border-border bg-secondary text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition cursor-pointer";
-        modeBulkBtn.className = "h-7 px-3 rounded-full text-xs font-medium border border-primary bg-primary text-primary-foreground shadow-sm flex items-center gap-1.5 transition cursor-pointer";
+        if (modeStudioBtn) modeStudioBtn.className = inactiveClass;
+        modeSingleBtn.className = inactiveClass;
+        modeBulkBtn.className = "h-8 px-3 rounded-full text-xs font-semibold border border-primary bg-primary text-primary-foreground shadow-sm flex items-center gap-1.5 transition cursor-pointer";
         const bulkTextarea = document.getElementById("bulkTextarea");
         if (bulkTextarea) bulkTextarea.focus();
       } else {
         bulkInputSection.classList.add("hidden");
         singleInputSection.classList.remove("hidden");
-        modeBulkBtn.className = "h-7 px-3 rounded-full text-xs font-medium border border-border bg-secondary text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition cursor-pointer";
-        modeSingleBtn.className = "h-7 px-3 rounded-full text-xs font-medium border border-primary bg-primary text-primary-foreground shadow-sm flex items-center gap-1.5 transition cursor-pointer";
-        if (urlInput) urlInput.focus();
+        if (modeStudioBtn) modeStudioBtn.className = inactiveClass;
+        modeSingleBtn.className = "h-8 px-3 rounded-full text-xs font-semibold border border-primary bg-primary text-primary-foreground shadow-sm flex items-center gap-1.5 transition cursor-pointer";
+        modeBulkBtn.className = inactiveClass;
+        if (urlInput) {
+          urlInput.placeholder = "Paste Instagram, TikTok, YouTube, or video URL...";
+          urlInput.focus();
+        }
       }
     }
 
-    if (modeSingleBtn && modeBulkBtn) {
-      modeSingleBtn.addEventListener("click", () => setMode("single"));
-      modeBulkBtn.addEventListener("click", () => setMode("bulk"));
-    }
+    if (modeStudioBtn) modeStudioBtn.addEventListener("click", () => setMode("studio"));
+    if (modeSingleBtn) modeSingleBtn.addEventListener("click", () => setMode("single"));
+    if (modeBulkBtn) modeBulkBtn.addEventListener("click", () => setMode("bulk"));
   }
 
   // -------------------------------------------------------------
