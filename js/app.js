@@ -1215,9 +1215,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const tabSegmentsBtn = document.getElementById("tabSegmentsBtn");
     const tabHookBtn = document.getElementById("tabHookBtn");
     const tabLogoBtn = document.getElementById("tabLogoBtn");
+    const tabEffectsBtn = document.getElementById("tabEffectsBtn");
     const panelSegments = document.getElementById("panelSegments");
     const panelHook = document.getElementById("panelHook");
     const panelLogo = document.getElementById("panelLogo");
+    const panelEffects = document.getElementById("panelEffects");
+    const detectChaptersBtn = document.getElementById("detectChaptersBtn");
+    const aspectRatioSelect = document.getElementById("aspectRatioSelect");
+    const clipSpeedSelect = document.getElementById("clipSpeedSelect");
+    const speedValueBadge = document.getElementById("speedValueBadge");
 
     // Live Overlays on Player
     const clipLogoOverlay = document.getElementById("clipLogoOverlay");
@@ -1251,10 +1257,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const tabs = [
         { btn: tabSegmentsBtn, panel: panelSegments, id: "segments" },
         { btn: tabHookBtn, panel: panelHook, id: "hook" },
-        { btn: tabLogoBtn, panel: panelLogo, id: "logo" }
+        { btn: tabLogoBtn, panel: panelLogo, id: "logo" },
+        { btn: tabEffectsBtn, panel: panelEffects, id: "effects" }
       ];
 
       tabs.forEach(t => {
+        if (!t.btn || !t.panel) return;
         if (t.id === activeTab) {
           t.panel.classList.remove("hidden");
           t.btn.className = "flex-1 py-1.5 rounded-md font-medium text-foreground bg-card shadow-sm transition cursor-pointer flex items-center justify-center gap-1.5";
@@ -1268,6 +1276,80 @@ document.addEventListener("DOMContentLoaded", () => {
     if (tabSegmentsBtn) tabSegmentsBtn.addEventListener("click", () => switchTab("segments"));
     if (tabHookBtn) tabHookBtn.addEventListener("click", () => switchTab("hook"));
     if (tabLogoBtn) tabLogoBtn.addEventListener("click", () => switchTab("logo"));
+    if (tabEffectsBtn) tabEffectsBtn.addEventListener("click", () => switchTab("effects"));
+
+    // Creator Speed & Crop listener
+    if (clipSpeedSelect) {
+      clipSpeedSelect.addEventListener("change", () => {
+        if (speedValueBadge) {
+          const val = parseFloat(clipSpeedSelect.value);
+          speedValueBadge.textContent = val === 1.0 ? "1.0x Normal" : `${val}x Faster`;
+        }
+        if (typeof updateBurnOverlayUI === "function") updateBurnOverlayUI();
+      });
+    }
+
+    if (aspectRatioSelect) {
+      aspectRatioSelect.addEventListener("change", () => {
+        if (typeof updateBurnOverlayUI === "function") updateBurnOverlayUI();
+      });
+    }
+
+    // Auto-detect Chapters / Timestamps from video title or description
+    if (detectChaptersBtn) {
+      detectChaptersBtn.addEventListener("click", () => {
+        const textToScan = `${currentMedia?.title || ""} ${currentMedia?.description || ""}`;
+        const timestampRegex = /(?:(\d{1,2}):)?(\d{1,2}):(\d{2})/g;
+        const matches = [];
+        let match;
+
+        while ((match = timestampRegex.exec(textToScan)) !== null) {
+          const raw = match[0];
+          const sec = window.mediaConverterEngine.parseTimeToSeconds(raw);
+          if (!matches.some(m => Math.abs(m.sec - sec) < 5)) {
+            matches.push({ raw, sec });
+          }
+        }
+
+        if (matches.length < 2) {
+          // Generate 3 smart algorithmic highlight clips evenly spaced across video
+          const dur = clipMiniPlayer.duration || (currentMedia?.duration ? parseFloat(currentMedia.duration) : 180);
+          if (dur > 30) {
+            const segDur = 25;
+            const p1 = Math.max(10, Math.floor(dur * 0.15));
+            const p2 = Math.floor(dur * 0.45);
+            const p3 = Math.floor(dur * 0.75);
+
+            clipSegments = [
+              { id: `seg_${Date.now()}_1`, label: "Viral Hook Segment", start: window.mediaConverterEngine.formatSecondsToTime(p1), end: window.mediaConverterEngine.formatSecondsToTime(Math.min(dur, p1 + segDur)) },
+              { id: `seg_${Date.now()}_2`, label: "Core Climax Reel", start: window.mediaConverterEngine.formatSecondsToTime(p2), end: window.mediaConverterEngine.formatSecondsToTime(Math.min(dur, p2 + segDur)) },
+              { id: `seg_${Date.now()}_3`, label: "Key Takeaway Reel", start: window.mediaConverterEngine.formatSecondsToTime(p3), end: window.mediaConverterEngine.formatSecondsToTime(Math.min(dur, p3 + segDur)) }
+            ];
+            renderSegments();
+            showToast("Auto-generated 3 viral timestamp clips across video!", "success");
+            return;
+          }
+          showToast("No chapters detected. Use Add (+15s / +30s) to queue segments.", "info");
+          return;
+        }
+
+        // Build segments from parsed timestamp matches
+        const newSegs = [];
+        for (let i = 0; i < matches.length; i++) {
+          const startSec = matches[i].sec;
+          const endSec = (i + 1 < matches.length) ? Math.min(startSec + 60, matches[i + 1].sec) : startSec + 30;
+          newSegs.push({
+            id: `seg_${Date.now()}_${i}`,
+            label: `Chapter ${i + 1}`,
+            start: window.mediaConverterEngine.formatSecondsToTime(startSec),
+            end: window.mediaConverterEngine.formatSecondsToTime(endSec)
+          });
+        }
+        clipSegments = newSegs;
+        renderSegments();
+        showToast(`Auto-detected ${newSegs.length} timestamp chapters!`, "success");
+      });
+    }
 
     // Hook Frame Live Updates
     function updateHookBannerPreview() {
@@ -1452,7 +1534,9 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateBurnOverlayUI() {
       const hasHook = enableHookToggle && enableHookToggle.checked;
       const hasLogo = enableLogoToggle && enableLogoToggle.checked && uploadedLogoBuffer;
-      const anyOverlay = Boolean(hasHook || hasLogo);
+      const hasCrop = Boolean(aspectRatioSelect && aspectRatioSelect.value !== "original");
+      const hasSpeed = Boolean(clipSpeedSelect && parseFloat(clipSpeedSelect.value) !== 1.0);
+      const anyOverlay = Boolean(hasHook || hasLogo || hasCrop || hasSpeed);
       const cores = Math.max(1, Math.min(6, navigator.hardwareConcurrency || 4));
 
       if (burnOverlaysLabel) {
@@ -1468,7 +1552,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (clipCoresBadge) {
         const willBurn = anyOverlay && (!burnOverlaysToggle || burnOverlaysToggle.checked);
         clipCoresBadge.textContent = willBurn
-          ? `${cores} CPU Cores • Parallel Overlay Encode`
+          ? `${cores} CPU Cores • Multi-Feature Render (Crop/Speed/FX)`
           : `${cores} CPU Cores • Instant Lossless Cut`;
       }
     }
@@ -1697,6 +1781,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             const durVal = hookDurationSelect ? hookDurationSelect.value : "2.5";
             sliceOptions.hookDuration = durVal === "always" ? "always" : parseFloat(durVal);
+          }
+
+          if (shouldBurn && aspectRatioSelect && aspectRatioSelect.value !== "original") {
+            sliceOptions.aspectRatio = aspectRatioSelect.value;
+          }
+
+          if (shouldBurn && clipSpeedSelect && parseFloat(clipSpeedSelect.value) !== 1.0) {
+            sliceOptions.speedRatio = parseFloat(clipSpeedSelect.value);
           }
 
           const clips = await window.mediaConverterEngine.sliceBatchParallel(streamUrl, clipSegments, sliceOptions, (p) => {

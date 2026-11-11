@@ -66,6 +66,8 @@ self.onmessage = async (evt) => {
     logoPosition,
     hookBuffer,
     hookDuration,
+    aspectRatio,   // "original", "9:16", "1:1"
+    speedRatio,     // 1.0, 1.1, 1.15, 1.25
   } = payload;
 
   const duration = Math.max(0.5, endSec - startSec);
@@ -104,7 +106,9 @@ self.onmessage = async (evt) => {
       cachedSourceId = sourceId;
     }
 
-    const hasOverlays = Boolean(logoBuffer || hookBuffer);
+    const hasCrop = Boolean(aspectRatio && aspectRatio !== "original");
+    const hasSpeed = Boolean(speedRatio && Math.abs(speedRatio - 1.0) > 0.02);
+    const hasOverlays = Boolean(logoBuffer || hookBuffer || hasCrop || hasSpeed);
 
     if (logoBuffer) ffmpeg.FS("writeFile", inLogo, logoBuffer);
     if (hookBuffer) ffmpeg.FS("writeFile", inHook, hookBuffer);
@@ -133,12 +137,26 @@ self.onmessage = async (evt) => {
         );
       }
     } else {
-      // 🎨 Filter-complex overlay path with ultrafast zerolatency encoding
+      // 🎨 Filter-complex overlay/crop/speed path with ultrafast zerolatency encoding
       const args = ["-ss", String(startSec), "-t", String(duration), "-i", CACHED_SOURCE_FILE];
       const filterChains = [];
       let curV = "0:v";
       let inIdx = 1;
 
+      // 1. Aspect Ratio Vertical Crop Filter (9:16 Shorts or 1:1 Square)
+      if (hasCrop) {
+        if (aspectRatio === "9:16") {
+          // Crop to 9:16 vertical centered: width = min(iw, ih*9/16), height = ih
+          filterChains.push(`[${curV}]crop=w='min(iw\\,ih*9/16)':h='ih':x='(iw-ow)/2':y=0[v_crop]`);
+          curV = "v_crop";
+        } else if (aspectRatio === "1:1") {
+          // Crop to 1:1 square centered: min(iw, ih)
+          filterChains.push(`[${curV}]crop=w='min(iw\\,ih)':h='min(iw\\,ih)':x='(iw-ow)/2':y='(ih-oh)/2'[v_crop]`);
+          curV = "v_crop";
+        }
+      }
+
+      // 2. Viral Hook Banner Overlay
       if (hookBuffer) {
         args.push("-i", inHook);
         const dur = hookDuration || 2.5;
@@ -148,6 +166,7 @@ self.onmessage = async (evt) => {
         inIdx++;
       }
 
+      // 3. Logo Watermark Overlay
       if (logoBuffer) {
         args.push("-i", inLogo);
         let pos = "W-w-16:16";
@@ -159,10 +178,24 @@ self.onmessage = async (evt) => {
         inIdx++;
       }
 
+      // 4. Video Playback Speed Filter (setpts)
+      if (hasSpeed) {
+        const ptsMult = (1 / speedRatio).toFixed(4);
+        filterChains.push(`[${curV}]setpts=${ptsMult}*PTS[v_speed]`);
+        curV = "v_speed";
+      }
+
+      // 5. Audio Playback Speed Filter (atempo)
+      let curA = "0:a?";
+      if (hasSpeed) {
+        filterChains.push(`[0:a]atempo=${speedRatio.toFixed(2)}[a_speed]`);
+        curA = "[a_speed]";
+      }
+
       args.push(
         "-filter_complex", filterChains.join(";"),
         "-map", `[${curV}]`,
-        "-map", "0:a?",
+        "-map", curA,
         "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "24",
         "-c:a", "aac", "-b:a", "128k",
         "-movflags", "+faststart",

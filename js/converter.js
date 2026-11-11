@@ -930,6 +930,12 @@ class MediaConverterEngine {
           payload.hookBuffer = new Uint8Array(options.hookBuffer);
           payload.hookDuration = options.hookDuration;
         }
+        if (options.aspectRatio) {
+          payload.aspectRatio = options.aspectRatio;
+        }
+        if (options.speedRatio) {
+          payload.speedRatio = options.speedRatio;
+        }
 
         slot.worker.onmessage = (evt) => {
           const { type, segmentIndex, percent, message, exportName, buffer, size } = evt.data;
