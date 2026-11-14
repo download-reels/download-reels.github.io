@@ -187,7 +187,23 @@ async function resolveMediaUrl(rawUrl) {
 }
 
 /**
- * Resolves Instagram Reel or Post via Embed extraction
+ * Converts Instagram shortcode to numeric media ID
+ */
+function shortcodeToMediaId(shortcode) {
+  let code = shortcode;
+  if (code.length > 28) code = code.substring(0, code.length - 28);
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  let id = 0n;
+  for (let i = 0; i < code.length; i++) {
+    const idx = chars.indexOf(code[i]);
+    if (idx === -1) return null;
+    id = id * 64n + BigInt(idx);
+  }
+  return id.toString();
+}
+
+/**
+ * Resolves Instagram Reel or Post via GraphQL, Direct Scraping, and Embed fallbacks
  */
 async function resolveInstagram(url) {
   const shortcodeMatch = url.match(/\/(?:reel|reels|p|tv|share\/reel)\/([A-Za-z0-9_-]+)/);
@@ -196,84 +212,177 @@ async function resolveInstagram(url) {
   }
 
   const shortcode = shortcodeMatch[1];
-  const embedUrl = `https://www.instagram.com/reel/${shortcode}/embed/captioned/`;
-
-  const headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  const browserHeaders = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
   };
 
-  const res = await fetch(embedUrl, { headers });
-  if (!res.ok) {
-    throw new Error(`Instagram embed returned HTTP ${res.status}. Reel may be private or restricted.`);
-  }
+  // Strategy 1: Instagram GraphQL Relay API (Modern & highly reliable)
+  try {
+    const mediaId = shortcodeToMediaId(shortcode);
+    if (mediaId) {
+      // 1a. Fetch LSD token from Instagram homepage
+      const homeRes = await fetch("https://www.instagram.com/", { headers: browserHeaders });
+      if (homeRes.ok) {
+        const homeHtml = await homeRes.text();
+        const lsdMatch = homeHtml.match(/\[\"LSD\",\[\],\{\"token\":\"([^\"]+)\"/);
+        const lsd = lsdMatch ? lsdMatch[1] : null;
 
-  const html = await res.text();
+        if (lsd) {
+          const body = new URLSearchParams();
+          body.append("lsd", lsd);
+          body.append("fb_api_caller_class", "RelayModern");
+          body.append("fb_api_req_friendly_name", "PolarisLoggedOutDesktopWWWPostRootContentQuery");
+          body.append("server_timestamps", "true");
+          body.append("variables", JSON.stringify({ media_id: mediaId }));
+          body.append("doc_id", "27130156389949648");
 
-  // Extract video_url
-  let videoUrl = null;
-  const idx = html.indexOf("video_url");
-  if (idx !== -1) {
-    const startHttps = html.indexOf("https:", idx);
-    if (startHttps !== -1 && (startHttps - idx) < 50) {
-      let endQuote = html.indexOf('\\"', startHttps);
-      if (endQuote === -1) endQuote = html.indexOf('"', startHttps);
-      if (endQuote > startHttps) {
-        let rawUrl = html.substring(startHttps, endQuote);
-        videoUrl = rawUrl.replace(/\\u0026/g, "&").replace(/\\+/g, "");
+          const gqlRes = await fetch("https://www.instagram.com/api/graphql", {
+            method: "POST",
+            headers: {
+              ...browserHeaders,
+              "Content-Type": "application/x-www-form-urlencoded",
+              "X-FB-Friendly-Name": "PolarisLoggedOutDesktopWWWPostRootContentQuery",
+              "X-FB-LSD": lsd,
+              "X-IG-App-ID": "936619743392459",
+              "X-ASBD-ID": "359341",
+              "Origin": "https://www.instagram.com",
+              "Referer": `https://www.instagram.com/reel/${shortcode}/`,
+              "Sec-Fetch-Mode": "cors",
+              "Sec-Fetch-Site": "same-origin"
+            },
+            body: body.toString()
+          });
+
+          if (gqlRes.ok) {
+            const json = await gqlRes.json();
+            const media = json?.data?.xig_polaris_media;
+            const product = media?.if_not_gated_logged_out || media;
+            const versions = product?.video_versions || [];
+
+            if (versions.length > 0) {
+              const rawTitle = product?.caption?.text || "Instagram Reel";
+              const cleanTitle = rawTitle.replace(/\s+/g, " ").trim();
+              const title = cleanTitle.length > 80 ? cleanTitle.substring(0, 80) + "..." : cleanTitle;
+              const author = product?.user?.username ? `@${product.user.username}` : "Instagram Creator";
+              const thumbnailUrl = product?.display_uri || null;
+              const videoUrl = versions[0].url;
+
+              const formats = versions.map((v, i) => ({
+                label: (v.height ? `${v.height}p` : `Quality ${i + 1}`) + " (MP4)",
+                url: v.url,
+                quality: v.height ? `${v.height}p` : "HD",
+                ext: "mp4",
+                width: v.width,
+                height: v.height
+              }));
+
+              return {
+                status: "success",
+                platform: "instagram",
+                id: shortcode,
+                title,
+                author,
+                thumbnailUrl,
+                videoUrl,
+                formats
+              };
+            }
+          }
+        }
       }
     }
+  } catch (gqlErr) {
+    console.warn("Instagram GraphQL strategy failed, falling back...", gqlErr);
   }
 
-  // Fallback regex for video_url
-  if (!videoUrl) {
-    const vm = html.match(/video_url[\"\\':\s]+(https?:[^\"]+?)(?:\"|\\)/i);
-    if (vm && vm[1]) {
-      videoUrl = vm[1].replace(/\\u0026/g, "&").replace(/\\+/g, "");
-    }
-  }
+  // Strategy 2: Direct Page JSON Scraping (xig_polaris_media & regex)
+  try {
+    const postUrl = `https://www.instagram.com/p/${shortcode}/`;
+    const res = await fetch(postUrl, { headers: browserHeaders });
+    if (res.ok) {
+      const html = await res.text();
 
-  if (!videoUrl) {
-    throw new Error("Unable to extract video stream from this Instagram Reel. Ensure the account is public.");
-  }
+      // Look for progressive MP4 URLs in the payload
+      const mp4Matches = [...html.matchAll(/"(https?:\\\/\\\/[^"]*?\.mp4\?[^"]*?)"/gi)];
+      if (mp4Matches.length > 0) {
+        const rawUrl = mp4Matches[0][1].replace(/\\u0026/g, "&").replace(/\\\//g, "/");
+        let title = "Instagram Reel";
+        const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+        if (titleMatch && titleMatch[1]) {
+          title = titleMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        }
 
-  // Extract caption / title
-  let title = "Instagram Reel";
-  const captionMatch = html.match(/<div class="Caption">([\s\S]*?)<\/div>/i) ||
-                       html.match(/<title>([^<]+)<\/title>/i);
-  if (captionMatch && captionMatch[1]) {
-    title = captionMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-    if (title.length > 80) title = title.substring(0, 80) + "...";
-  }
-
-  // Extract thumbnail / poster
-  let thumbnail = null;
-  const displayIdx = html.indexOf("display_url");
-  if (displayIdx !== -1) {
-    const startHttps = html.indexOf("https:", displayIdx);
-    if (startHttps !== -1 && (startHttps - displayIdx) < 50) {
-      let endQuote = html.indexOf('\\"', startHttps);
-      if (endQuote === -1) endQuote = html.indexOf('"', startHttps);
-      if (endQuote > startHttps) {
-        thumbnail = html.substring(startHttps, endQuote).replace(/\\u0026/g, "&").replace(/\\+/g, "");
+        return {
+          status: "success",
+          platform: "instagram",
+          id: shortcode,
+          title,
+          author: "Instagram Creator",
+          thumbnailUrl: null,
+          videoUrl: rawUrl,
+          formats: [
+            { label: "Original Reel (MP4 HD)", url: rawUrl, quality: "1080p/HD", ext: "mp4" }
+          ]
+        };
       }
     }
+  } catch (pageErr) {
+    console.warn("Instagram page scraping failed, trying embed...", pageErr);
   }
 
-  return {
-    status: "success",
-    platform: "instagram",
-    id: shortcode,
-    title,
-    author: "Instagram Creator",
-    thumbnailUrl: thumbnail,
-    videoUrl,
-    formats: [
-      { label: "Original Reel (MP4 HD)", url: videoUrl, quality: "1080p/HD", ext: "mp4" },
-      { label: "Standard MP4", url: videoUrl, quality: "720p", ext: "mp4" }
-    ],
-  };
+  // Strategy 3: Embed fallback
+  const embedUrl = `https://www.instagram.com/reel/${shortcode}/embed/captioned/`;
+  const res = await fetch(embedUrl, { headers: browserHeaders });
+  if (res.ok) {
+    const html = await res.text();
+    let videoUrl = null;
+
+    const idx = html.indexOf("video_url");
+    if (idx !== -1) {
+      const startHttps = html.indexOf("https:", idx);
+      if (startHttps !== -1 && (startHttps - idx) < 50) {
+        let endQuote = html.indexOf('\\"', startHttps);
+        if (endQuote === -1) endQuote = html.indexOf('"', startHttps);
+        if (endQuote > startHttps) {
+          videoUrl = html.substring(startHttps, endQuote).replace(/\\u0026/g, "&").replace(/\\+/g, "");
+        }
+      }
+    }
+
+    if (!videoUrl) {
+      const vm = html.match(/video_url[\"\\':\s]+(https?:[^\"]+?)(?:\"|\\)/i);
+      if (vm && vm[1]) {
+        videoUrl = vm[1].replace(/\\u0026/g, "&").replace(/\\+/g, "");
+      }
+    }
+
+    if (videoUrl) {
+      let title = "Instagram Reel";
+      const captionMatch = html.match(/<div class="Caption">([\s\S]*?)<\/div>/i) ||
+                           html.match(/<title>([^<]+)<\/title>/i);
+      if (captionMatch && captionMatch[1]) {
+        title = captionMatch[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        if (title.length > 80) title = title.substring(0, 80) + "...";
+      }
+
+      return {
+        status: "success",
+        platform: "instagram",
+        id: shortcode,
+        title,
+        author: "Instagram Creator",
+        thumbnailUrl: null,
+        videoUrl,
+        formats: [
+          { label: "Original Reel (MP4 HD)", url: videoUrl, quality: "1080p/HD", ext: "mp4" }
+        ]
+      };
+    }
+  }
+
+  throw new Error("Unable to extract video stream from this Instagram Reel. Ensure the account is public and contains video.");
 }
 
 /**
