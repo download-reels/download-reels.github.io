@@ -325,6 +325,15 @@
         <span>Bulk URLs</span>
         <span class="rounded bg-primary/20 text-primary text-[10px] px-1 font-mono font-semibold">Batch</span>
       </button>
+
+      <button 
+        id="modeChannelBtn" 
+        class="h-8 px-3.5 rounded-full text-xs font-medium border border-border bg-secondary text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition cursor-pointer"
+      >
+        <svg class="w-3.5 h-3.5 text-pink-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+        <span>Channel &amp; Profile Reels</span>
+        <span class="rounded bg-pink-500/20 text-pink-300 text-[10px] px-1 font-mono font-semibold">100 Max</span>
+      </button>
     </div>
 
     <!-- Single URL Input Section -->
@@ -436,6 +445,65 @@
       </div>
     </div>
 
+    <!-- Channel & Profile Reels Input Section -->
+    <div id="channelInputSection" class="hidden w-full mb-4">
+      <div class="flex items-center gap-2 p-1.5 rounded-lg border border-border bg-card shadow-sm">
+        
+        <!-- Platform Icon Indicator -->
+        <div class="pl-2 flex items-center gap-1.5 flex-shrink-0 text-muted-foreground">
+          <div class="w-5 h-5 flex items-center justify-center text-pink-500">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          </div>
+          <span class="text-[11px] font-mono px-1.5 py-0.5 rounded bg-secondary text-foreground">Channel</span>
+        </div>
+
+        <!-- Input Field -->
+        <input 
+          id="channelInput"
+          type="url" 
+          placeholder="Paste Instagram account or YouTube channel (e.g. instagram.com/username or @channel/shorts)..." 
+          autocomplete="off"
+          spellcheck="false"
+          class="flex-1 bg-transparent border-0 px-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+        >
+
+        <!-- Clear Button (×) -->
+        <button 
+          id="channelClearInputBtn" 
+          class="h-8 w-8 rounded text-muted-foreground hover:text-foreground flex items-center justify-center transition cursor-pointer"
+          title="Clear"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+
+        <!-- Paste Button -->
+        <button 
+          id="channelPasteBtn" 
+          class="hidden sm:inline-flex h-8 px-2.5 items-center gap-1 rounded-md border border-border bg-secondary hover:bg-accent text-xs font-medium text-foreground transition cursor-pointer"
+          title="Paste from clipboard"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+          </svg>
+          <span>Paste</span>
+        </button>
+
+        <!-- Fetch Button -->
+        <button 
+          id="channelFetchBtn" 
+          class="h-8 px-4 rounded-md bg-rose-600 hover:bg-rose-500 text-white text-xs font-medium flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+          <span>Browse Reels</span>
+        </button>
+
+      </div>
+    </div>
+
     <!-- Platform Quick Badges -->
     <div class="flex flex-wrap items-center justify-center gap-1.5 mb-8 text-xs text-muted-foreground">
       <span class="text-[11px] font-mono mr-1" data-i18n="sample.label">Sample:</span>
@@ -492,6 +560,142 @@
       <div id="bulkQueueList" class="space-y-2 max-h-[480px] overflow-y-auto pr-1">
         <!-- Rendered dynamically -->
       </div>
+    </div>
+
+    <!-- Channel & Profile Reels Loading State -->
+    <div id="channelLoading" class="hidden mb-8 rounded-lg border border-border bg-card p-6 text-center shadow-sm space-y-3">
+      <div class="inline-flex items-center justify-center p-3 rounded-full bg-rose-500/10 text-rose-400">
+        <svg class="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+      </div>
+      <div>
+        <h4 class="text-sm font-semibold text-foreground">Fetching Channel Reels...</h4>
+        <p class="text-xs text-muted-foreground mt-0.5">Scanning creator timeline, extracting thumbnails, and building your 100-reel gallery.</p>
+      </div>
+    </div>
+
+    <!-- Channel Error Notice -->
+    <div id="channelError" class="hidden mb-8 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 shadow-sm text-xs text-foreground">
+      <div class="flex items-start gap-2.5">
+        <svg class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <div id="channelErrorMsg" class="flex-1 space-y-1"></div>
+      </div>
+    </div>
+
+    <!-- Channel & Profile Reels Content Section -->
+    <div id="channelContentSection" class="hidden mb-8 space-y-4">
+      
+      <!-- Profile Header Banner -->
+      <div id="channelProfileBanner" class="rounded-lg border border-border bg-card p-4 sm:p-5 shadow-sm flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3.5">
+          <img id="channelAvatar" src="" alt="Avatar" class="w-12 h-12 rounded-full object-cover border border-border bg-zinc-900 shadow-sm">
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 id="channelTitle" class="text-base font-bold text-foreground"></h3>
+              <span id="channelPlatformBadge" class="px-2 py-0.5 rounded text-[11px] font-mono font-bold"></span>
+            </div>
+            <p id="channelBio" class="text-xs text-muted-foreground line-clamp-1 max-w-md mt-0.5"></p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-mono text-muted-foreground">Loaded: <strong id="channelTotalLoaded" class="text-foreground">0</strong> reels</span>
+        </div>
+      </div>
+
+      <!-- Sticky Selection & Action Toolbar -->
+      <div id="channelToolbar" class="sticky top-16 z-30 rounded-lg border border-border bg-card/95 backdrop-blur p-3 shadow-md flex flex-wrap items-center justify-between gap-2.5">
+        
+        <!-- Left: Selection Controls & Counter -->
+        <div class="flex items-center gap-2">
+          <button 
+            id="channelSelectAllBtn" 
+            class="h-7 px-2.5 rounded border border-border bg-secondary hover:bg-accent text-xs font-medium text-foreground transition cursor-pointer flex items-center gap-1"
+          >
+            <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            <span>Select All (Max 100)</span>
+          </button>
+
+          <button 
+            id="channelDeselectBtn" 
+            class="h-7 px-2 rounded text-xs text-muted-foreground hover:text-foreground transition cursor-pointer"
+          >
+            Clear
+          </button>
+
+          <div class="h-4 w-px bg-border"></div>
+
+          <div class="flex items-center gap-1.5 px-2.5 py-1 rounded bg-secondary text-xs font-mono">
+            <span class="text-muted-foreground">Selected:</span>
+            <span id="channelSelectedCount" class="font-bold text-primary">0</span>
+            <span class="text-muted-foreground">/ 100 Max</span>
+          </div>
+        </div>
+
+        <!-- Right: Action Buttons -->
+        <div class="flex items-center gap-2">
+          <button 
+            id="channelDownloadSelectedBtn" 
+            disabled 
+            class="h-8 px-3.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium flex items-center gap-1.5 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none shadow-sm"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+            <span>Download (<span id="channelDownloadBtnCount">0</span>)</span>
+          </button>
+
+          <button 
+            id="channelDownloadZipBtn" 
+            disabled 
+            class="h-8 px-3 rounded-md border border-border bg-secondary hover:bg-accent text-xs font-medium text-foreground flex items-center gap-1.5 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+            title="Download all selected reels bundled into one ZIP file"
+          >
+            <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+            <span>Download ZIP</span>
+          </button>
+
+          <button 
+            id="channelSendToClipperBtn" 
+            disabled 
+            class="hidden sm:inline-flex h-8 px-2.5 rounded-md border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-medium items-center gap-1 transition cursor-pointer disabled:opacity-40 disabled:pointer-events-none"
+            title="Send to Reel Clipper Studio"
+          >
+            <span>✂️ Clip Studio</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Live Download Progress Bar -->
+      <div id="channelProgressBarGroup" class="hidden rounded-lg border border-border bg-card p-3 shadow-sm space-y-2">
+        <div class="flex items-center justify-between text-xs font-mono">
+          <span id="channelProgressMsg" class="text-muted-foreground truncate max-w-sm">Preparing downloads...</span>
+          <span id="channelProgressPct" class="text-foreground font-semibold">0%</span>
+        </div>
+        <div class="w-full bg-secondary rounded-full h-2 overflow-hidden">
+          <div id="channelProgressBar" class="bg-primary h-2 rounded-full transition-all duration-300" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <!-- Reels Responsive Grid (2 cols mobile, 3 cols tablet, 4 cols desktop) -->
+      <div id="channelReelsGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 pt-1">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Pagination / Load Next 100 Button -->
+      <div class="pt-4 pb-2 text-center">
+        <button 
+          id="channelLoadMoreBtn" 
+          class="hidden h-9 px-6 rounded-full border border-border bg-card hover:bg-secondary text-xs font-semibold text-foreground inline-flex items-center gap-2 transition cursor-pointer shadow-sm"
+        >
+          <span>Load Next 100 Reels</span>
+          <span class="text-xs">⏩</span>
+        </button>
+      </div>
+
     </div>
 
     <!-- Skeleton Loading Shimmer (shadcn Skeleton Card) -->
@@ -1685,6 +1889,7 @@
   <script src="js/platforms.js"></script>
   <script src="js/converter.js"></script>
   <script src="js/downloader.js"></script>
+  <script src="js/channel-downloader.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/app.js"></script>
 

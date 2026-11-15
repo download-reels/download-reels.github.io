@@ -27,10 +27,40 @@ export default {
       return jsonResponse({
         status: "ok",
         name: "Clipper Resolver Worker",
-        version: "2.1.0",
-        message: "Send requests to /api/resolve?url=<video-url>",
-        endpoints: ["/api/resolve", "/api/proxy", "/api/audio"],
+        version: "2.2.0",
+        message: "Send requests to /api/resolve?url=<video-url> or /api/channel?url=<channel-url>",
+        endpoints: ["/api/resolve", "/api/channel", "/api/proxy", "/api/audio"],
       });
+    }
+
+    // Channel / Account Reels Pagination Endpoint
+    if (url.pathname === "/api/channel") {
+      let targetUrl = url.searchParams.get("url");
+      let continuation = url.searchParams.get("continuation");
+      let sessionId = url.searchParams.get("sessionid") || request.headers.get("X-IG-Session");
+
+      if (request.method === "POST") {
+        try {
+          const body = await request.json();
+          if (body.url) targetUrl = body.url;
+          if (body.continuation) continuation = body.continuation;
+          if (body.sessionid) sessionId = body.sessionid;
+        } catch (_) {}
+      }
+
+      if (!targetUrl) {
+        return jsonResponse({ error: "Missing required parameter: 'url'" }, 400);
+      }
+
+      try {
+        const result = await resolveChannelReels(targetUrl, continuation, sessionId);
+        return jsonResponse(result);
+      } catch (err) {
+        return jsonResponse({
+          error: "Failed to resolve channel reels",
+          details: err.message || String(err),
+        }, 500);
+      }
     }
 
     // Resolve Endpoint
@@ -952,6 +982,298 @@ async function scrapeOpenGraphMedia(url) {
   }
 
   throw new Error("Unable to detect video stream from this link. The page may require login or has anti-bot restrictions.");
+}
+
+/**
+ * Resolves channel reels/shorts across supported platforms with pagination support
+ */
+async function resolveChannelReels(targetUrl, continuation = null, sessionId = null) {
+  const url = targetUrl.trim();
+  const lower = url.toLowerCase();
+
+  // YouTube Channel or Shorts
+  if (lower.includes("youtube.com") || lower.includes("youtu.be") || lower.startsWith("@")) {
+    return await resolveYouTubeChannel(url, continuation);
+  }
+
+  // Instagram Account / Reels
+  if (lower.includes("instagram.com") || lower.includes("instagr.am") || lower.includes("instagram")) {
+    return await resolveInstagramChannel(url, continuation, sessionId);
+  }
+
+  throw new Error("Unsupported channel URL. Please provide a YouTube channel (@handle/shorts) or Instagram profile link.");
+}
+
+/**
+ * Resolves YouTube Channel Shorts with continuation pagination (48-96 items per page)
+ */
+async function resolveYouTubeChannel(channelUrl, continuation = null) {
+  let url = channelUrl.trim();
+  if (url.startsWith("@")) {
+    url = `https://www.youtube.com/${url}/shorts`;
+  } else if (!url.includes("/shorts") && !url.includes("/videos")) {
+    url = url.replace(/\/+$/, "") + "/shorts";
+  }
+
+  const headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+  };
+
+  // Pagination request using continuation token
+  if (continuation) {
+    const browseRes = await fetch("https://www.youtube.com/youtubei/v1/browse?prettyPrint=false", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...headers,
+        "X-YouTube-Client-Name": "1",
+        "X-YouTube-Client-Version": "2.20241025.01.00",
+      },
+      body: JSON.stringify({
+        context: {
+          client: { clientName: "WEB", clientVersion: "2.20241025.01.00", hl: "en", gl: "US" }
+        },
+        continuation
+      })
+    });
+
+    if (!browseRes.ok) {
+      throw new Error(`YouTube browse API returned HTTP ${browseRes.status}`);
+    }
+
+    const browseData = await browseRes.json();
+    const items = [];
+    let nextContinuation = null;
+
+    function traverseBrowse(o) {
+      if (!o || typeof o !== "object") return;
+      if (o.shortsLockupViewModel) {
+        const vm = o.shortsLockupViewModel;
+        const videoId = vm.entityId?.replace("shorts-shelf-item-", "") || vm.onTap?.innertubeCommand?.reelWatchEndpoint?.videoId;
+        const title = vm.overlayMetadata?.primaryText?.content || "YouTube Short";
+        if (videoId) {
+          items.push({
+            id: videoId,
+            title,
+            thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+            url: `https://www.youtube.com/shorts/${videoId}`,
+          });
+        }
+      }
+      if (o.continuationItemRenderer && o.continuationItemRenderer.continuationEndpoint?.continuationCommand?.token) {
+        nextContinuation = o.continuationItemRenderer.continuationEndpoint.continuationCommand.token;
+      }
+      if (Array.isArray(o)) { for (const it of o) traverseBrowse(it); }
+      else { for (const v of Object.values(o)) traverseBrowse(v); }
+    }
+    traverseBrowse(browseData);
+
+    // Deduplicate
+    const uniqueItems = [];
+    const seen = new Set();
+    for (const it of items) {
+      if (it.id && !seen.has(it.id)) {
+        seen.add(it.id);
+        uniqueItems.push(it);
+      }
+    }
+
+    return {
+      status: "success",
+      platform: "youtube",
+      items: uniqueItems,
+      pageInfo: {
+        hasNextPage: !!nextContinuation,
+        continuationToken: nextContinuation,
+      }
+    };
+  }
+
+  // Initial Channel Load
+  const res = await fetch(url, { headers });
+  if (!res.ok) throw new Error(`YouTube channel returned HTTP ${res.status}`);
+  const html = await res.text();
+  const jsonMatch = html.match(/var ytInitialData = ({.*?});<\/script>/s);
+  if (!jsonMatch) throw new Error("Could not parse YouTube channel initial data.");
+
+  let data;
+  try {
+    data = JSON.parse(jsonMatch[1]);
+  } catch (e) {
+    throw new Error("Failed to parse YouTube channel JSON data.");
+  }
+
+  // Channel Title & Avatar
+  const channelTitle = html.match(/<title>([^<]+)<\/title>/i)?.[1]?.replace(" - YouTube", "").trim() || "YouTube Creator";
+  const avatarMatch = html.match(/"avatar":\{"thumbnails":\[\{"url":"([^"]+)"/);
+  const avatar = avatarMatch ? avatarMatch[1] : null;
+
+  const items = [];
+  let gridToken = null;
+
+  function traverseInitial(o) {
+    if (!o || typeof o !== "object") return;
+    if (o.shortsLockupViewModel) {
+      const vm = o.shortsLockupViewModel;
+      const videoId = vm.entityId?.replace("shorts-shelf-item-", "") || vm.onTap?.innertubeCommand?.reelWatchEndpoint?.videoId;
+      const title = vm.overlayMetadata?.primaryText?.content || "YouTube Short";
+      if (videoId) {
+        items.push({
+          id: videoId,
+          title,
+          thumbnail: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          url: `https://www.youtube.com/shorts/${videoId}`,
+        });
+      }
+    }
+    if (o.richGridRenderer && o.richGridRenderer.contents) {
+      for (const item of o.richGridRenderer.contents) {
+        if (item.continuationItemRenderer) {
+          gridToken = item.continuationItemRenderer.continuationEndpoint?.continuationCommand?.token;
+        }
+      }
+    }
+    if (Array.isArray(o)) { for (const it of o) traverseInitial(it); }
+    else { for (const v of Object.values(o)) traverseInitial(v); }
+  }
+  traverseInitial(data);
+
+  // Deduplicate
+  const uniqueItems = [];
+  const seen = new Set();
+  for (const it of items) {
+    if (it.id && !seen.has(it.id)) {
+      seen.add(it.id);
+      uniqueItems.push(it);
+    }
+  }
+
+  return {
+    status: "success",
+    platform: "youtube",
+    profile: {
+      title: channelTitle,
+      avatar,
+      totalLoaded: uniqueItems.length,
+    },
+    items: uniqueItems,
+    pageInfo: {
+      hasNextPage: !!gridToken,
+      continuationToken: gridToken,
+    }
+  };
+}
+
+/**
+ * Resolves Instagram Creator Reels via web_profile_info and Session ID support
+ */
+async function resolveInstagramChannel(targetUrl, cursor = null, sessionId = null) {
+  const match = targetUrl.match(/(?:instagram\.com|instagr\.am)\/([A-Za-z0-9_.-]+)/i) ||
+                targetUrl.match(/^@?([A-Za-z0-9_.-]+)$/);
+  if (!match) throw new Error("Invalid Instagram account URL or username.");
+  let username = match[1];
+  if (["reel", "reels", "p", "tv", "stories", "explore"].includes(username.toLowerCase())) {
+    throw new Error("Please provide a creator profile URL (e.g. instagram.com/username).");
+  }
+
+  const browserHeaders = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    "Accept": "*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "X-IG-App-ID": "936619743392459",
+    "Origin": "https://www.instagram.com",
+    "Referer": `https://www.instagram.com/${username}/`,
+  };
+
+  if (sessionId) {
+    browserHeaders["Cookie"] = `sessionid=${sessionId}`;
+  }
+
+  // Query web_profile_info
+  const profileUrl = `https://www.instagram.com/api/v1/users/web_profile_info/?username=${username}`;
+  try {
+    const res = await fetch(profileUrl, { headers: browserHeaders });
+
+    if (res.ok) {
+      const json = await res.json();
+      const user = json?.data?.user;
+      if (!user) throw new Error("Instagram user profile not found.");
+
+      const timeline = user.edge_owner_to_timeline_media;
+      const edges = timeline?.edges || [];
+      const pageInfo = timeline?.page_info || {};
+
+      const items = edges.map(edge => {
+        const node = edge.node;
+        const shortcode = node.shortcode;
+        const rawTitle = node.edge_media_to_caption?.edges?.[0]?.node?.text || "Instagram Reel";
+        const title = rawTitle.replace(/\s+/g, " ").trim();
+        const thumbnail = node.display_url || node.thumbnail_src;
+        const isVideo = node.is_video;
+
+        return {
+          id: shortcode,
+          shortcode,
+          title: title.length > 80 ? title.substring(0, 80) + "..." : title,
+          thumbnail,
+          isVideo,
+          url: `https://www.instagram.com/reel/${shortcode}/`,
+          likes: node.edge_liked_by?.count || node.edge_media_preview_like?.count || 0,
+        };
+      });
+
+      return {
+        status: "success",
+        platform: "instagram",
+        profile: {
+          username: user.username,
+          title: user.full_name || `@${user.username}`,
+          avatar: user.profile_pic_url_hd || user.profile_pic_url,
+          bio: user.biography,
+          totalReels: timeline?.count || items.length,
+          isPrivate: user.is_private,
+        },
+        items,
+        pageInfo: {
+          hasNextPage: pageInfo.has_next_page || false,
+          continuationToken: pageInfo.end_cursor || null,
+        }
+      };
+    }
+  } catch (err) {
+    console.warn("Instagram web_profile_info fetch error:", err);
+  }
+
+  // Scrape public metadata as fallback if unauthenticated / rate-limited
+  let avatar = null;
+  let title = `@${username}`;
+  try {
+    const pageRes = await fetch(`https://www.instagram.com/${username}/`, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      }
+    });
+    if (pageRes.ok) {
+      const html = await pageRes.text();
+      const ogImage = html.match(/<meta property="og:image" content="([^"]+)"/i);
+      if (ogImage) avatar = ogImage[1];
+      const ogTitle = html.match(/<meta property="og:title" content="([^"]+)"/i);
+      if (ogTitle) title = ogTitle[1];
+    }
+  } catch (_) {}
+
+  return {
+    status: "requires_session",
+    platform: "instagram",
+    profile: {
+      username,
+      title,
+      avatar,
+    },
+    message: "Instagram restricts unauthenticated account crawling to prevent scraping. To fetch all 100 reels from this account, add your Instagram sessionid in Settings ⚙️ or paste multiple Reel links to select & bulk-download."
+  };
 }
 
 function decodeHtml(str) {
