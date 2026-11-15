@@ -6,4 +6,6 @@ node_modules/
 .env
 package-lock.json
 .wrangler/
+image.png
+image copy.png
 
