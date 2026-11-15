@@ -417,27 +417,92 @@
       const errorEl = document.getElementById("channelError");
       const errorMsg = document.getElementById("channelErrorMsg");
       if (errorEl && errorMsg) {
+        const username = profile?.username || "this account";
         errorMsg.innerHTML = `
-          <div class="space-y-2">
-            <p class="font-medium text-amber-300">Instagram Rate Limit Protection</p>
-            <p class="text-xs text-muted-foreground">${message}</p>
-            <div class="pt-2 flex flex-wrap items-center gap-2">
-              <input 
-                id="channelSessionInput" 
-                type="text" 
-                placeholder="Paste Instagram sessionid cookie..." 
-                class="h-8 px-2.5 rounded bg-zinc-900 border border-border text-xs text-foreground font-mono focus:outline-none"
-              />
-              <button 
-                id="saveSessionBtn" 
-                class="h-8 px-3 rounded bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition"
-              >
-                Save &amp; Fetch Reels
-              </button>
+          <div class="space-y-3 text-left">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wide">
+                Instagram Protection
+              </span>
+              <p class="font-semibold text-foreground text-sm">Account Crawling Notice</p>
+            </div>
+            
+            <p class="text-xs text-muted-foreground leading-relaxed">
+              Instagram strictly restricts unauthenticated server crawling of complete creator profiles to prevent bot scraping. Single reels work anonymously without any login, but scraping all reels from <strong class="text-foreground">@${username}</strong> requires an Instagram session.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <!-- Option 1: Instant Bulk URLs (No login) -->
+              <div class="p-3 rounded-md border border-border bg-card/60 flex flex-col justify-between">
+                <div>
+                  <div class="font-medium text-xs text-foreground mb-1 flex items-center gap-1.5">
+                    <span>⚡ Option 1: Paste Reel Links</span>
+                    <span class="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-mono">No Login</span>
+                  </div>
+                  <p class="text-[11px] text-muted-foreground leading-snug">
+                    Paste multiple reel URLs directly into Bulk mode to download in 1080p or export as a ZIP without needing any cookie.
+                  </p>
+                </div>
+                <button 
+                  id="switchToBulkBtn" 
+                  type="button" 
+                  class="mt-3 w-full h-7 px-2.5 rounded bg-secondary hover:bg-secondary/80 border border-border text-foreground text-xs font-medium flex items-center justify-center gap-1.5 transition"
+                >
+                  <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                  Switch to Bulk URLs
+                </button>
+              </div>
+
+              <!-- Option 2: Add Instagram Session ID -->
+              <div class="p-3 rounded-md border border-border bg-card/60 flex flex-col justify-between">
+                <div>
+                  <div class="font-medium text-xs text-foreground mb-1 flex items-center gap-1.5">
+                    <span>🔑 Option 2: Add Session ID</span>
+                    <span class="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 font-mono">Full 100 Grid</span>
+                  </div>
+                  <p class="text-[11px] text-muted-foreground leading-snug">
+                    Provide your Instagram <code class="px-1 py-0.5 rounded bg-zinc-800 text-[10px] text-zinc-300">sessionid</code> cookie to unlock full 100-reel timeline browsing.
+                  </p>
+                </div>
+                
+                <div class="mt-2 space-y-1.5">
+                  <div class="flex gap-1.5">
+                    <input 
+                      id="channelSessionInput" 
+                      type="password" 
+                      placeholder="Paste sessionid cookie..." 
+                      class="flex-1 h-7 px-2 rounded bg-zinc-900 border border-border text-xs text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <button 
+                      id="saveSessionBtn" 
+                      type="button" 
+                      class="h-7 px-2.5 rounded bg-amber-500 hover:bg-amber-400 text-black font-semibold text-xs transition"
+                    >
+                      Save &amp; Fetch
+                    </button>
+                  </div>
+                  <details class="text-[10px] text-muted-foreground">
+                    <summary class="cursor-pointer hover:text-foreground">How to get sessionid in 15 seconds?</summary>
+                    <ol class="mt-1 list-decimal list-inside space-y-0.5 text-zinc-400">
+                      <li>Open instagram.com on your desktop browser.</li>
+                      <li>Press F12 &rarr; Application (or Storage) &rarr; Cookies &rarr; instagram.com.</li>
+                      <li>Double-click the <span class="font-mono text-zinc-200">sessionid</span> value, copy, and paste here.</li>
+                    </ol>
+                  </details>
+                </div>
+              </div>
             </div>
           </div>
         `;
         errorEl.classList.remove("hidden");
+
+        const switchToBulkBtn = document.getElementById("switchToBulkBtn");
+        if (switchToBulkBtn) {
+          switchToBulkBtn.addEventListener("click", () => {
+            const modeBulkBtn = document.getElementById("modeBulkBtn");
+            if (modeBulkBtn) modeBulkBtn.click();
+          });
+        }
 
         const saveBtn = document.getElementById("saveSessionBtn");
         const sessionInput = document.getElementById("channelSessionInput");

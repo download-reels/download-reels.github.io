@@ -686,6 +686,10 @@ document.addEventListener("DOMContentLoaded", () => {
   function initSettings() {
     apiEndpointInput.value = localStorage.getItem("clipper_api_url") || "https://clipper-resolver.download-reels.workers.dev";
     autoDownloadToggle.checked = localStorage.getItem("clipper_auto_download") === "true";
+    const igSessionInput = document.getElementById("igSessionInput");
+    if (igSessionInput) {
+      igSessionInput.value = localStorage.getItem("clipper_ig_session") || "";
+    }
   }
 
   const useDefaultWorkerBtn = document.getElementById("useDefaultWorkerBtn");
@@ -712,6 +716,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const customUrl = apiEndpointInput.value.trim();
       localStorage.setItem("clipper_api_url", customUrl);
       localStorage.setItem("clipper_auto_download", autoDownloadToggle.checked ? "true" : "false");
+      const igSessionInput = document.getElementById("igSessionInput");
+      if (igSessionInput) {
+        localStorage.setItem("clipper_ig_session", igSessionInput.value.trim());
+      }
 
       window.downloaderEngine.defaultSettings.apiUrl = customUrl;
       window.downloaderEngine.defaultSettings.autoDownload = autoDownloadToggle.checked;
