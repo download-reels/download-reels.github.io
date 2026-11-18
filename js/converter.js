@@ -34,9 +34,9 @@ class MediaConverterEngine {
       const { createFFmpeg } = window.FFmpeg;
 
       // Check for SharedArrayBuffer support (requires cross-origin isolation COOP/COEP headers)
-      // If SharedArrayBuffer is unavailable (common on GitHub Pages), use single-threaded core-st
-      const hasSharedArrayBuffer = typeof window.SharedArrayBuffer !== "undefined";
-      const corePath = hasSharedArrayBuffer
+      // If SharedArrayBuffer is unavailable (standard on GitHub Pages), use single-threaded core-st
+      const isIsolated = Boolean(window.crossOriginIsolated && typeof window.SharedArrayBuffer !== "undefined");
+      const corePath = isIsolated
         ? "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
         : "https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js";
 
@@ -537,8 +537,8 @@ class MediaConverterEngine {
           );
         }
       } else {
-        // Filter-complex overlay with branding / hook frame
-        const args = ["-ss", String(startSec), "-t", String(duration), "-i", inSource];
+        // Filter-complex overlay with branding / hook frame (-ss before -i, -t AFTER -i)
+        const args = ["-ss", String(startSec), "-i", inSource, "-t", String(duration)];
         const filterChains = [];
         let curV = "0:v";
         let inIdx = 1;
@@ -705,28 +705,13 @@ class MediaConverterEngine {
         const headerBytes = await this.fetchByteRange(effectiveUrl, 0, headerProbeEnd);
         const isFaststart = this.hasFaststartMoov(headerBytes);
 
-        let targetBytes = totalBytes;
-        let usedByteRange = false;
-        const videoDuration = Number(options.videoDuration) || 0;
-
-        if (isFaststart && videoDuration > 0 && maxEnd > 0 && maxEnd < videoDuration * 0.75 && totalBytes > 3 * 1024 * 1024) {
-          // Only need up to maxEnd + 20% safety margin
-          const ratio = Math.min(1, (maxEnd / videoDuration) * 1.2 + 0.05);
-          if (ratio < 0.8) {
-            targetBytes = Math.min(totalBytes, Math.max(headerBytes.length, Math.ceil(totalBytes * ratio)));
-            usedByteRange = true;
-          }
-        }
-
-        // Download targetBytes across 4 parallel HTTP Range connections
+        const targetBytes = totalBytes;
+        // Download targetBytes across parallel HTTP Range connections (2-4 streams for high-speed fetch)
         const numChunks = targetBytes > 2 * 1024 * 1024 ? 4 : 2;
         const chunkSize = Math.ceil(targetBytes / numChunks);
         const chunkProgress = new Array(numChunks).fill(0);
 
-        const pctMsg = usedByteRange
-          ? `Smart Range fetch (${Math.round((targetBytes / totalBytes) * 100)}% of file across ${numChunks} parallel streams)...`
-          : `Parallel download (${numChunks} concurrent streams)...`;
-        onProgress({ stage: "fetch_parallel", percent: 8, message: pctMsg });
+        onProgress({ stage: "fetch_parallel", percent: 8, message: `Parallel high-speed download (${numChunks} streams)...` });
 
         const chunks = await Promise.all(
           Array.from({ length: numChunks }, async (_, idx) => {
@@ -789,8 +774,8 @@ class MediaConverterEngine {
     if (typeof Worker === "undefined") return;
     const hwCores = Math.max(1, Math.min(6, navigator.hardwareConcurrency || 4));
     const targetCount = Math.min(count, hwCores);
-    const hasSharedArrayBuffer = typeof window.SharedArrayBuffer !== "undefined";
-    const corePath = hasSharedArrayBuffer
+    const isIsolated = Boolean(window.crossOriginIsolated && typeof window.SharedArrayBuffer !== "undefined");
+    const corePath = isIsolated
       ? "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
       : "https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js";
 
@@ -848,11 +833,11 @@ class MediaConverterEngine {
       totalClips
     });
 
-    // 1. Smart fetch (in-memory cache + faststart range check + 4x parallel chunk download)
+    // 1. Smart fetch (in-memory cache + parallel chunk download)
     const { fullData, sourceId } = await this.fetchSmartVideo(sourceUrl, segments, options, onProgress);
 
-    const hasSharedArrayBuffer = typeof window.SharedArrayBuffer !== "undefined";
-    const corePath = hasSharedArrayBuffer
+    const isIsolated = Boolean(window.crossOriginIsolated && typeof window.SharedArrayBuffer !== "undefined");
+    const corePath = isIsolated
       ? "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
       : "https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js";
 
@@ -884,110 +869,120 @@ class MediaConverterEngine {
 
     broadcastProgress();
 
-    // 3. Dispatch segments across reusable worker pool
-    await new Promise((resolve, reject) => {
-      let nextSegmentIndex = 0;
-      let failed = false;
+    // 3. Dispatch segments across reusable worker pool with auto-fallback
+    try {
+      await new Promise((resolve, reject) => {
+        let nextSegmentIndex = 0;
+        let failed = false;
 
-      const assignNextToSlot = (slot) => {
-        if (failed) return;
-        if (nextSegmentIndex >= totalClips) {
-          slot.busy = false;
-          return;
-        }
+        const assignNextToSlot = (slot) => {
+          if (failed) return;
+          if (nextSegmentIndex >= totalClips) {
+            slot.busy = false;
+            return;
+          }
 
-        const i = nextSegmentIndex++;
-        slot.busy = true;
-        const seg = segments[i];
-        const startSec = this.parseTimeToSeconds(seg.start);
-        const endSec = this.parseTimeToSeconds(seg.end);
+          const i = nextSegmentIndex++;
+          slot.busy = true;
+          const seg = segments[i];
+          const startSec = this.parseTimeToSeconds(seg.start);
+          const endSec = this.parseTimeToSeconds(seg.end);
 
-        const transferList = [];
-        let videoDataCopy = null;
+          const transferList = [];
+          let videoDataCopy = null;
 
-        // Only copy & transfer videoData if this worker doesn't already have sourceId cached!
-        if (slot.cachedSourceId !== sourceId) {
-          videoDataCopy = new Uint8Array(fullData.length);
-          videoDataCopy.set(fullData);
-          transferList.push(videoDataCopy.buffer);
-        }
+          // Only copy & transfer videoData if this worker doesn't already have sourceId cached!
+          if (slot.cachedSourceId !== sourceId) {
+            videoDataCopy = new Uint8Array(fullData.length);
+            videoDataCopy.set(fullData);
+            transferList.push(videoDataCopy.buffer);
+          }
 
-        const payload = {
-          segmentIndex: i,
-          startSec,
-          endSec,
-          label: seg.label || `Reel_${i + 1}`,
-          sourceId,
-          videoData: videoDataCopy,
-          corePath,
-        };
+          const payload = {
+            segmentIndex: i,
+            startSec,
+            endSec,
+            label: seg.label || `Reel_${i + 1}`,
+            sourceId,
+            videoData: videoDataCopy,
+            corePath,
+          };
 
-        if (options.logoBuffer) {
-          payload.logoBuffer = new Uint8Array(options.logoBuffer);
-          payload.logoPosition = options.logoPosition;
-        }
-        if (options.hookBuffer) {
-          payload.hookBuffer = new Uint8Array(options.hookBuffer);
-          payload.hookDuration = options.hookDuration;
-        }
-        if (options.aspectRatio) {
-          payload.aspectRatio = options.aspectRatio;
-        }
-        if (options.speedRatio) {
-          payload.speedRatio = options.speedRatio;
-        }
+          if (options.logoBuffer) {
+            payload.logoBuffer = new Uint8Array(options.logoBuffer);
+            payload.logoPosition = options.logoPosition;
+          }
+          if (options.hookBuffer) {
+            payload.hookBuffer = new Uint8Array(options.hookBuffer);
+            payload.hookDuration = options.hookDuration;
+          }
+          if (options.aspectRatio) {
+            payload.aspectRatio = options.aspectRatio;
+          }
+          if (options.speedRatio) {
+            payload.speedRatio = options.speedRatio;
+          }
 
-        slot.worker.onmessage = (evt) => {
-          const { type, segmentIndex, percent, message, exportName, buffer, size } = evt.data;
+          slot.worker.onmessage = (evt) => {
+            const { type, segmentIndex, percent, message, exportName, buffer, size } = evt.data;
 
-          if (type === "progress") {
-            workerStates[segmentIndex].percent = percent;
-            workerStates[segmentIndex].message = message;
-            broadcastProgress();
-          } else if (type === "done") {
-            slot.cachedSourceId = sourceId;
-            workerStates[segmentIndex].percent = 100;
-            workerStates[segmentIndex].message = "Done ✓";
-            completedCount++;
+            if (type === "progress") {
+              workerStates[segmentIndex].percent = percent;
+              workerStates[segmentIndex].message = message;
+              broadcastProgress();
+            } else if (type === "done") {
+              slot.cachedSourceId = sourceId;
+              workerStates[segmentIndex].percent = 100;
+              workerStates[segmentIndex].message = "Done ✓";
+              completedCount++;
 
-            const blob = new Blob([buffer], { type: "video/mp4" });
-            results[segmentIndex] = {
-              name: exportName,
-              blob,
-              url: URL.createObjectURL(blob),
-              size,
-              start: startSec,
-              end: endSec,
-              duration: Math.max(0.5, endSec - startSec),
-            };
+              const blob = new Blob([buffer], { type: "video/mp4" });
+              results[segmentIndex] = {
+                name: exportName,
+                blob,
+                url: URL.createObjectURL(blob),
+                size,
+                start: startSec,
+                end: endSec,
+                duration: Math.max(0.5, endSec - startSec),
+              };
 
-            broadcastProgress();
+              broadcastProgress();
 
-            if (completedCount === totalClips) {
+              if (completedCount === totalClips) {
+                slot.busy = false;
+                resolve();
+              } else {
+                assignNextToSlot(slot);
+              }
+            } else if (type === "error") {
+              failed = true;
               slot.busy = false;
-              resolve();
-            } else {
-              assignNextToSlot(slot);
+              reject(new Error(`Reel ${segmentIndex + 1} failed: ${evt.data.message}`));
             }
-          } else if (type === "error") {
+          };
+
+          slot.worker.onerror = (e) => {
             failed = true;
             slot.busy = false;
-            reject(new Error(`Reel ${segmentIndex + 1} failed: ${evt.data.message}`));
-          }
+            reject(new Error(`Worker error on Reel ${i + 1}: ${e.message}`));
+          };
+
+          slot.worker.postMessage({ type: "slice", payload }, transferList);
         };
 
-        slot.worker.onerror = (e) => {
-          failed = true;
-          slot.busy = false;
-          reject(new Error(`Worker error on Reel ${i + 1}: ${e.message}`));
-        };
-
-        slot.worker.postMessage({ type: "slice", payload }, transferList);
-      };
-
-      // Kick off all pool workers simultaneously
-      pool.forEach(slot => assignNextToSlot(slot));
-    });
+        // Kick off all pool workers simultaneously
+        pool.forEach(slot => assignNextToSlot(slot));
+      });
+    } catch (workerPoolErr) {
+      console.warn("Parallel worker clipping error, auto-recovering with sequential engine:", workerPoolErr);
+      onProgress({
+        stage: "fallback",
+        percent: 32,
+        message: "Auto-recovering via sequential studio engine..."
+      });
+      return await this.sliceBatch(sourceUrl, segments, options, onProgress);
+    }
 
     onProgress({
       stage: "ready",

@@ -1611,27 +1611,50 @@ document.addEventListener("DOMContentLoaded", () => {
     if (openClipModalBtn) {
       openClipModalBtn.addEventListener("click", () => {
         if (!currentMedia) return;
-        const streamUrl = selectedFormat?.url || currentMedia.videoUrl;
+        let streamUrl = selectedFormat?.url || currentMedia.videoUrl;
         if (!streamUrl) {
           showToast("No active video stream loaded.", "error");
           return;
+        }
+
+        // Proxy YouTube streams for mini-player preview to bypass CORS
+        if (streamUrl.includes("googlevideo.com") && !streamUrl.includes("/api/proxy")) {
+          const apiBase = (window.downloaderEngine?.defaultSettings?.apiUrl || "https://clipper-resolver.download-reels.workers.dev").replace(/\/+$/, "");
+          streamUrl = `${apiBase}/api/proxy?url=${encodeURIComponent(streamUrl)}`;
         }
 
         clipMiniPlayer.src = streamUrl;
         clipMiniPlayer.load();
         clipModal.classList.remove("hidden");
 
-        // Pre-warm FFmpeg Web Workers in the background so they are ready before user clicks Export
+        // Pre-warm FFmpeg Web Workers in the background
         if (window.mediaConverterEngine?.prewarmWorkerPool) {
           window.mediaConverterEngine.prewarmWorkerPool(2);
         }
 
-        // Initialize default segments if empty
+        // Initialize smart adaptive segments based on video duration
+        const dur = (clipMiniPlayer && !isNaN(clipMiniPlayer.duration) && clipMiniPlayer.duration > 1)
+          ? clipMiniPlayer.duration
+          : (currentMedia?.duration ? parseFloat(currentMedia.duration) : 30);
+
         if (clipSegments.length === 0) {
-          clipSegments = [
-            { id: "seg_1", label: "Reel 1", start: "00:15", end: "00:28" },
-            { id: "seg_2", label: "Reel 2", start: "01:45", end: "02:20" }
-          ];
+          if (dur <= 20) {
+            clipSegments = [
+              { id: "seg_1", label: "Reel 1", start: "00:00", end: window.mediaConverterEngine.formatSecondsToTime(dur) }
+            ];
+          } else if (dur <= 40) {
+            const mid = Math.floor(dur / 2);
+            clipSegments = [
+              { id: "seg_1", label: "Reel 1", start: "00:00", end: window.mediaConverterEngine.formatSecondsToTime(mid) },
+              { id: "seg_2", label: "Reel 2", start: window.mediaConverterEngine.formatSecondsToTime(mid), end: window.mediaConverterEngine.formatSecondsToTime(dur) }
+            ];
+          } else {
+            const segLen = Math.min(25, Math.floor(dur / 2));
+            clipSegments = [
+              { id: "seg_1", label: "Reel 1", start: "00:00", end: window.mediaConverterEngine.formatSecondsToTime(segLen) },
+              { id: "seg_2", label: "Reel 2", start: window.mediaConverterEngine.formatSecondsToTime(segLen), end: window.mediaConverterEngine.formatSecondsToTime(Math.min(dur, segLen * 2)) }
+            ];
+          }
         }
         renderSegments();
         updateLogoPosition();
@@ -1656,7 +1679,24 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       });
       clipMiniPlayer.addEventListener("loadedmetadata", () => {
-        clipDurationText.textContent = window.mediaConverterEngine.formatSecondsToTime(clipMiniPlayer.duration);
+        const totalDur = clipMiniPlayer.duration;
+        clipDurationText.textContent = window.mediaConverterEngine.formatSecondsToTime(totalDur);
+
+        // Clamp segments that exceed video duration
+        let changed = false;
+        clipSegments.forEach((seg) => {
+          const s = window.mediaConverterEngine.parseTimeToSeconds(seg.start);
+          const e = window.mediaConverterEngine.parseTimeToSeconds(seg.end);
+          if (s >= totalDur) {
+            seg.start = window.mediaConverterEngine.formatSecondsToTime(Math.max(0, Math.floor(totalDur * 0.1)));
+            seg.end = window.mediaConverterEngine.formatSecondsToTime(Math.min(totalDur, Math.floor(totalDur * 0.1) + 15));
+            changed = true;
+          } else if (e > totalDur) {
+            seg.end = window.mediaConverterEngine.formatSecondsToTime(totalDur);
+            changed = true;
+          }
+        });
+        if (changed) renderSegments();
       });
     }
 
@@ -1796,8 +1836,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (exportClipsBtn) {
       exportClipsBtn.addEventListener("click", async () => {
         if (!currentMedia || clipSegments.length === 0) return;
-        const streamUrl = selectedFormat?.url || currentMedia.videoUrl;
+        let streamUrl = selectedFormat?.url || currentMedia.videoUrl;
         if (!streamUrl) return;
+
+        if (streamUrl.includes("googlevideo.com") && !streamUrl.includes("/api/proxy")) {
+          const apiBase = (window.downloaderEngine?.defaultSettings?.apiUrl || "https://clipper-resolver.download-reels.workers.dev").replace(/\/+$/, "");
+          streamUrl = `${apiBase}/api/proxy?url=${encodeURIComponent(streamUrl)}`;
+        }
 
         exportClipsBtn.disabled = true;
         clipProgressBox.classList.remove("hidden");

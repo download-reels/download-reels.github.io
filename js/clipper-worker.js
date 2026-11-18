@@ -22,11 +22,16 @@ async function loadFFmpeg(corePath) {
   importScripts("https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js");
 
   const { createFFmpeg } = FFmpeg;
-  ffmpegInst = createFFmpeg({ log: false, corePath });
+  const isIsolated = Boolean(self.crossOriginIsolated && typeof SharedArrayBuffer !== "undefined");
+  const targetCorePath = (isIsolated && corePath && !corePath.includes("core-st"))
+    ? corePath
+    : "https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js";
 
   try {
+    ffmpegInst = createFFmpeg({ log: false, corePath: targetCorePath });
     await ffmpegInst.load();
   } catch (e) {
+    console.warn("Primary FFmpeg load failed in worker, falling back to core-st:", e);
     const stPath = "https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js";
     ffmpegInst = createFFmpeg({ log: false, corePath: stPath });
     await ffmpegInst.load();
@@ -130,15 +135,15 @@ self.onmessage = async (evt) => {
           "-ss", String(startSec),
           "-i", CACHED_SOURCE_FILE,
           "-t", String(duration),
-          "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "24",
+          "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
           "-c:a", "aac", "-b:a", "128k",
           "-movflags", "+faststart",
           outFilename
         );
       }
     } else {
-      // 🎨 Filter-complex overlay/crop/speed path with ultrafast zerolatency encoding
-      const args = ["-ss", String(startSec), "-t", String(duration), "-i", CACHED_SOURCE_FILE];
+      // 🎨 Filter-complex overlay/crop/speed path (-ss before -i, -t AFTER -i)
+      const args = ["-ss", String(startSec), "-i", CACHED_SOURCE_FILE, "-t", String(duration)];
       const filterChains = [];
       let curV = "0:v";
       let inIdx = 1;
@@ -196,7 +201,7 @@ self.onmessage = async (evt) => {
         "-filter_complex", filterChains.join(";"),
         "-map", `[${curV}]`,
         "-map", curA,
-        "-c:v", "libx264", "-preset", "ultrafast", "-tune", "zerolatency", "-crf", "24",
+        "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
         "-c:a", "aac", "-b:a", "128k",
         "-movflags", "+faststart",
         outFilename
