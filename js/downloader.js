@@ -331,9 +331,10 @@ class DownloaderEngine {
       "https://yt.chocolatemoo53.com"
     ];
 
+    const fieldsParam = "fields=title,author,lengthSeconds,description,videoThumbnails,formatStreams,adaptiveFormats";
     for (const inst of invidiousInstances) {
       try {
-        const res = await fetch(`${inst}/api/v1/videos/${videoId}`, {
+        const res = await fetch(`${inst}/api/v1/videos/${videoId}?${fieldsParam}`, {
           headers: {
             "Accept": "application/json"
           }
@@ -504,25 +505,49 @@ class DownloaderEngine {
     const audioStreams = adaptive.filter(f => {
       const isAudio = f.type && f.type.includes("audio");
       const isM4a = f.container === "m4a" || (f.mime && f.mime.includes("mp4")) || (f.type && f.type.includes("audio/mp4"));
-      return isAudio && isM4a;
+      return isAudio && isM4a && f.url;
     });
-    const bestAudio = audioStreams.sort((a, b) => (parseInt(b.bitrate || "0", 10) - parseInt(a.bitrate || "0", 10)))[0]
-      || adaptive.find(f => f.type && f.type.includes("audio"));
+    // Prefer standard AAC (itag 140) for normal videos, or fast AAC (itag 139) for ultra-long movies (> 45 min)
+    const isLongVideo = (Number(data.lengthSeconds) || 0) > 2700;
+    const bestAudio = (isLongVideo
+      ? (audioStreams.find(a => String(a.itag) === "139") || audioStreams.find(a => String(a.itag) === "140"))
+      : (audioStreams.find(a => String(a.itag) === "140") || audioStreams[0])
+    ) || audioStreams.sort((a, b) => (parseInt(b.bitrate || "0", 10) - parseInt(a.bitrate || "0", 10)))[0]
+      || adaptive.find(f => f.type && f.type.includes("audio") && f.url);
     const audioUrl = bestAudio ? bestAudio.url : null;
+    const audioInit = bestAudio?.init || null;
+    const audioIndex = bestAudio?.index || null;
+    const audioSize = bestAudio?.clen ? parseInt(bestAudio.clen, 10) : undefined;
 
-    // Extract video streams (prioritizing MP4 H.264 for instant remuxing)
+    // Extract video streams (prioritizing MP4 H.264 for instant remuxing & DASH sidx slicing)
     const isMp4H264 = v => {
       const isMp4 = v.container === "mp4" || (v.mime && v.mime.includes("mp4")) || (v.type && v.type.includes("mp4"));
       const isH264 = !v.encoding || v.encoding === "h264" || (v.type && v.type.includes("avc1"));
-      return isMp4 && isH264;
+      return isMp4 && isH264 && v.url;
     };
     const videoStreams = adaptive.filter(f => f.type && f.type.includes("video") && isMp4H264(f));
+
+    // Direct progressive streams if available (video + audio pre-muxed by YouTube)
+    const directStreams = [];
+    if (data.formatStreams && data.formatStreams.length > 0) {
+      data.formatStreams.forEach(fs => {
+        if (fs.url) {
+          directStreams.push({
+            label: `MP4 ${fs.resolution || "360p"} (Instant Direct)`,
+            url: fs.url,
+            quality: fs.resolution || "360p",
+            ext: "mp4",
+            videoOnly: false
+          });
+        }
+      });
+    }
 
     const tiers = [
       { label: "1080p Full HD", quality: "1080p", minHeight: 1080 },
       { label: "720p HD", quality: "720p", minHeight: 720 },
       { label: "480p", quality: "480p", minHeight: 480 },
-      { label: "360p", quality: "360p", minHeight: 360 }
+      { label: "360p Fast", quality: "360p", minHeight: 360 }
     ];
 
     const addedTiers = new Set();
@@ -534,33 +559,36 @@ class DownloaderEngine {
 
       if (candidate && candidate.url) {
         addedTiers.add(tier.quality);
+        const vSize = candidate.clen ? parseInt(candidate.clen, 10) : undefined;
         formats.push({
           label: tier.label,
           url: candidate.url,
           audioUrl: audioUrl,
           quality: tier.quality,
           ext: "mp4",
+          itag: candidate.itag,
+          initRange: candidate.init || null,
+          indexRange: candidate.index || null,
+          audioInitRange: audioInit,
+          audioIndexRange: audioIndex,
           videoOnly: true,
           needsMuxing: Boolean(audioUrl),
-          size: candidate.clen ? parseInt(candidate.clen, 10) : undefined
+          size: vSize && audioSize ? (vSize + audioSize) : vSize
         });
       }
     });
 
-    // Direct progressive streams if available
-    if (data.formatStreams && data.formatStreams.length > 0) {
-      data.formatStreams.forEach(fs => {
-        if (fs.url) {
-          formats.push({
-            label: `MP4 ${fs.resolution || "360p"} (Direct Stream)`,
-            url: fs.url,
-            quality: fs.resolution || "360p",
-            ext: "mp4",
-            videoOnly: false
-          });
-        }
-      });
+    // For very long videos (> 30 mins), put 720p HD or 360p Fast first so downloads & previews don't default to a 2.4GB 1080p stream
+    if (isLongVideo && formats.length > 1) {
+      const preferredIdx = formats.findIndex(f => f.quality === "720p" || f.quality === "480p" || f.quality === "360p");
+      if (preferredIdx > 0) {
+        const [pref] = formats.splice(preferredIdx, 1);
+        formats.unshift(pref);
+      }
     }
+
+    // Add progressive direct streams right after primary HD tiers
+    directStreams.forEach(ds => formats.push(ds));
 
     // Audio / MP3 format choices
     if (audioUrl) {
@@ -571,7 +599,8 @@ class DownloaderEngine {
         ext: "mp3",
         isAudio: true,
         bitrate: "320k",
-        needsConversion: true
+        needsConversion: true,
+        size: audioSize
       });
       formats.push({
         label: "MP3 Audio (192 kbps Standard)",
@@ -580,24 +609,31 @@ class DownloaderEngine {
         ext: "mp3",
         isAudio: true,
         bitrate: "192k",
-        needsConversion: true
+        needsConversion: true,
+        size: audioSize
       });
       formats.push({
-        label: "Original Audio (M4A)",
+        label: "Original Audio (M4A Instant)",
         url: audioUrl,
         quality: "Original Audio",
         ext: "m4a",
-        isAudio: true
+        isAudio: true,
+        size: audioSize
       });
     }
 
-    const directStreamUrl = (data.formatStreams && data.formatStreams[0]?.url) || null;
+    const directStreamUrl = directStreams[0]?.url || null;
+    // Fast preview stream (360p or 480p) so scrubbing in 2-hour movies is instant
+    const fastPreviewFmt = directStreams[0]
+      || formats.find(f => !f.isAudio && (f.quality === "360p" || f.quality === "480p"))
+      || formats.find(f => !f.isAudio);
 
     return {
       status: "success",
       platform: "youtube",
       id: videoId,
       title: data.title || "YouTube Video",
+      description: data.description || "",
       author: data.author || "YouTube Creator",
       authorHandle: null,
       thumbnailUrl: (() => {
@@ -611,7 +647,11 @@ class DownloaderEngine {
       })(),
       duration: data.lengthSeconds,
       videoUrl: directStreamUrl || formats[0]?.url || null,
+      previewUrl: fastPreviewFmt?.url || directStreamUrl || formats[0]?.url || null,
+      previewIsVideoOnly: Boolean(fastPreviewFmt && fastPreviewFmt.videoOnly),
       audioUrl: audioUrl,
+      audioInitRange: audioInit,
+      audioIndexRange: audioIndex,
       formats,
       source: "invidious"
     };
@@ -672,19 +712,43 @@ class DownloaderEngine {
    * @param {function} onProgress - Progress reporting callback
    */
   async downloadFile(url, filename = "video.mp4", onProgress = () => {}) {
-    onProgress(10, "Starting download stream...");
+    onProgress(15, "Starting instant native download stream...");
+
+    // Fastest strategy for large videos & proxied CDN streams:
+    // Hand off directly to the browser's native C++ download manager via our Cloudflare edge proxy
+    // with Content-Disposition: attachment (0MB JS RAM buffering, instant start in <0.2s!)
+    if (this.defaultSettings.apiUrl && (
+      url.includes("googlevideo.com") ||
+      url.includes("cdninstagram.com") ||
+      url.includes("fbcdn.net") ||
+      url.includes("/api/proxy")
+    )) {
+      const proxyUrl = url.includes("/api/proxy")
+        ? url
+        : `${this.defaultSettings.apiUrl.replace(/\/+$/, "")}/api/proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+      this.triggerDownloadLink(proxyUrl, filename);
+      onProgress(100, "Instant download started in browser!");
+      return true;
+    }
 
     try {
-      // Try fetch blob method first (best for controlling file name and progress)
       const response = await fetch(url, { mode: "cors" });
-      
       if (!response.ok) {
         throw new Error(`Network response error: ${response.status}`);
       }
 
       const contentLength = response.headers.get("content-length");
       const total = contentLength ? parseInt(contentLength, 10) : 0;
-      
+
+      // If file is larger than 25MB, hand off to native browser download stream instead of buffering in JS RAM
+      if (total > 25 * 1024 * 1024 && this.defaultSettings.apiUrl) {
+        try { await response.body?.cancel(); } catch (_) {}
+        const proxyUrl = `${this.defaultSettings.apiUrl.replace(/\/+$/, "")}/api/proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+        this.triggerDownloadLink(proxyUrl, filename);
+        onProgress(100, "Large file routed to native download manager!");
+        return true;
+      }
+
       let loaded = 0;
       const reader = response.body.getReader();
       const chunks = [];
@@ -713,8 +777,7 @@ class DownloaderEngine {
 
     } catch (corsErr) {
       console.warn("Direct blob download restricted by CORS, triggering native browser download:", corsErr);
-      
-      // Fallback: If configured with a worker proxy, use the proxy
+
       if (this.defaultSettings.apiUrl) {
         const proxyUrl = `${this.defaultSettings.apiUrl.replace(/\/+$/, "")}/api/proxy?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
         this.triggerDownloadLink(proxyUrl, filename);
@@ -722,7 +785,6 @@ class DownloaderEngine {
         return true;
       }
 
-      // Direct fallback: Anchor link trigger
       onProgress(100, "Opening browser download stream...");
       this.triggerDownloadLink(url, filename);
       return true;

@@ -352,17 +352,16 @@ class MediaConverterEngine {
    * @returns {Promise<{ blob: Blob, url: string, filename: string, size: number }>}
    */
   async mux(videoUrl, audioUrl, onProgress = () => {}) {
-    onProgress({ stage: "fetching_video", percent: 5, message: "Fetching video stream..." });
+    onProgress({ stage: "fetching_video", percent: 5, message: "Fetching HD video stream (parallel turbo)..." });
 
     try {
-      // 1. Fetch video track (0% -> 45%)
-      const videoData = await this.fetchBufferWithProgress(videoUrl, "HD Video Track", 5, 45, onProgress);
+      // 1. Fetch video & audio tracks using parallel multi-range connections when supported
+      const videoData = await this.fetchParallelOrStreamBuffer(videoUrl, "HD Video Track", 5, 48, onProgress);
 
-      // 2. Fetch audio track (45% -> 65%)
-      onProgress({ stage: "fetching_audio", percent: 45, message: "Fetching audio stream..." });
-      const audioData = await this.fetchBufferWithProgress(audioUrl, "HQ Audio Track", 45, 65, onProgress);
+      onProgress({ stage: "fetching_audio", percent: 48, message: "Fetching HQ audio stream..." });
+      const audioData = await this.fetchParallelOrStreamBuffer(audioUrl, "HQ Audio Track", 48, 68, onProgress);
 
-      // 3. Initialize FFmpeg engine
+      // 2. Initialize FFmpeg engine
       onProgress({ stage: "initializing", percent: 70, message: "Initializing FFmpeg remuxer engine..." });
       const ffmpeg = await this.loadFFmpeg(onProgress);
 
@@ -375,37 +374,33 @@ class MediaConverterEngine {
 
       onProgress({ stage: "muxing", percent: 85, message: "Merging video + audio streams..." });
 
-      // 4. Run stream copy muxing (-c copy is instant and lossless)
+      // Skip second-pass +faststart on huge files (>150MB) to avoid doubling WASM MEMFS allocation
+      const isLargeFile = (videoData.byteLength + audioData.byteLength) > 150 * 1024 * 1024;
+      const muxArgs = ["-i", inVideo, "-i", inAudio, "-c", "copy"];
+      if (!isLargeFile) {
+        muxArgs.push("-movflags", "+faststart");
+      }
+      muxArgs.push(outMuxed);
+
+      // 3. Run stream copy muxing (-c copy is instant and lossless)
       try {
-        await ffmpeg.run(
-          "-i", inVideo,
-          "-i", inAudio,
-          "-c", "copy",
-          "-movflags", "+faststart",
-          outMuxed
-        );
+        await ffmpeg.run(...muxArgs);
       } catch (copyErr) {
         console.warn("Direct stream copy failed, falling back to AAC audio remux:", copyErr);
-        await ffmpeg.run(
-          "-i", inVideo,
-          "-i", inAudio,
-          "-c:v", "copy",
-          "-c:a", "aac",
-          "-b:a", "192k",
-          "-movflags", "+faststart",
-          outMuxed
-        );
+        const fallbackArgs = ["-i", inVideo, "-i", inAudio, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k"];
+        if (!isLargeFile) fallbackArgs.push("-movflags", "+faststart");
+        fallbackArgs.push(outMuxed);
+        await ffmpeg.run(...fallbackArgs);
       }
+
+      // Free input files immediately before reading output to minimize peak WASM heap usage
+      try { ffmpeg.FS("unlink", inVideo); } catch (_) {}
+      try { ffmpeg.FS("unlink", inAudio); } catch (_) {}
 
       onProgress({ stage: "finalizing", percent: 96, message: "Assembling final MP4 video..." });
       const data = ffmpeg.FS("readFile", outMuxed);
 
-      // Clean up virtual filesystem memory
-      try {
-        ffmpeg.FS("unlink", inVideo);
-        ffmpeg.FS("unlink", inAudio);
-        ffmpeg.FS("unlink", outMuxed);
-      } catch (_) {}
+      try { ffmpeg.FS("unlink", outMuxed); } catch (_) {}
 
       const blob = new Blob([data.buffer], { type: "video/mp4" });
       onProgress({ stage: "complete", percent: 100, message: "HD Video ready!" });
@@ -461,18 +456,31 @@ class MediaConverterEngine {
       throw new Error("No clip segments specified for export.");
     }
 
-    onProgress({ stage: "fetching", percent: 5, message: "Fetching source video stream into browser..." });
+    onProgress({ stage: "fetching", percent: 5, message: "Preparing video stream for clipping..." });
 
-    // 1. Fetch source video once
-    const videoData = await this.fetchBufferWithProgress(sourceUrl, "Source Video", 5, 30, onProgress);
+    // 1. Try instant DASH sidx sub-segment byte-range slicing first (avoids downloading full 2GB movie!)
+    let dashPayloads = null;
+    try {
+      dashPayloads = await this.fetchDashClipPayloads(sourceUrl, segments, options, onProgress);
+    } catch (_) {}
 
-    onProgress({ stage: "init_ffmpeg", percent: 35, message: "Initializing FFmpeg WebAssembly..." });
+    let fullVideoData = null;
+    if (!dashPayloads) {
+      const smart = await this.fetchSmartVideo(sourceUrl, segments, options, onProgress);
+      fullVideoData = smart.fullData;
+    }
+
+    onProgress({ stage: "init_ffmpeg", percent: 32, message: "Initializing FFmpeg WebAssembly..." });
     const ffmpeg = await this.loadFFmpeg(onProgress);
 
     const inSource = `source_${Date.now()}.mp4`;
-    ffmpeg.FS("writeFile", inSource, videoData);
+    if (!dashPayloads && fullVideoData) {
+      ffmpeg.FS("writeFile", inSource, fullVideoData);
+    }
 
-    const hasOverlays = Boolean(options.logoBuffer || options.hookBuffer);
+    const hasCrop = Boolean(options.aspectRatio && options.aspectRatio !== "original");
+    const hasSpeed = Boolean(options.speedRatio && Math.abs(options.speedRatio - 1.0) > 0.02);
+    const hasOverlays = Boolean(options.logoBuffer || options.hookBuffer || hasCrop || hasSpeed);
     const inLogo = `logo_${Date.now()}.png`;
     const inHook = `hook_${Date.now()}.png`;
 
@@ -491,10 +499,23 @@ class MediaConverterEngine {
       const seg = segments[i];
       const startSec = this.parseTimeToSeconds(seg.start);
       const endSec = this.parseTimeToSeconds(seg.end);
-      const duration = Math.max(1, endSec - startSec);
+      const duration = Math.max(0.5, endSec - startSec);
 
-      const clipPctStart = 40 + Math.round((i / totalClips) * 50);
-      const clipPctEnd = 40 + Math.round(((i + 1) / totalClips) * 50);
+      const dp = dashPayloads ? dashPayloads[i] : null;
+      const isDashSlice = Boolean(dp && dp.isDashSlice);
+      const segVideoFile = isDashSlice ? `seg_v_${i}_${Date.now()}.mp4` : inSource;
+      const segAudioFile = (isDashSlice && dp.audioData) ? `seg_a_${i}_${Date.now()}.m4a` : null;
+
+      if (isDashSlice) {
+        ffmpeg.FS("writeFile", segVideoFile, dp.videoData);
+        if (segAudioFile) ffmpeg.FS("writeFile", segAudioFile, dp.audioData);
+      }
+
+      const dv = Math.max(0, startSec - (Number(dp?.vFragStartSec) || 0));
+      const da = Math.max(0, startSec - (Number(dp?.aFragStartSec) || 0));
+
+      const clipPctStart = 35 + Math.round((i / totalClips) * 55);
+      const clipPctEnd = 35 + Math.round(((i + 1) / totalClips) * 55);
 
       const label = (seg.label || `Reel_${i + 1}`).replace(/[^a-zA-Z0-9_-]/g, "_");
       const outFilename = `clip_${i + 1}_${Date.now()}.mp4`;
@@ -509,39 +530,98 @@ class MediaConverterEngine {
       });
 
       if (!hasOverlays) {
-        // Stream copy cut with fast seek (instant and lossless)
         try {
-          await ffmpeg.run(
-            "-ss", String(startSec),
-            "-i", inSource,
-            "-t", String(duration),
-            "-c", "copy",
-            "-avoid_negative_ts", "make_zero",
-            "-movflags", "+faststart",
-            outFilename
-          );
+          if (isDashSlice && segAudioFile) {
+            await ffmpeg.run(
+              "-i", segVideoFile,
+              "-i", segAudioFile,
+              "-copyts",
+              "-ss", String(startSec),
+              "-t", String(duration),
+              "-map", "0:v:0",
+              "-map", "1:a:0",
+              "-c:v", "copy",
+              "-c:a", "copy",
+              "-avoid_negative_ts", "make_zero",
+              "-movflags", "+faststart",
+              outFilename
+            );
+          } else if (isDashSlice) {
+            await ffmpeg.run(
+              "-i", segVideoFile,
+              "-copyts",
+              "-ss", String(startSec),
+              "-t", String(duration),
+              "-c", "copy",
+              "-avoid_negative_ts", "make_zero",
+              "-movflags", "+faststart",
+              outFilename
+            );
+          } else {
+            await ffmpeg.run(
+              "-ss", String(startSec),
+              "-i", segVideoFile,
+              "-t", String(duration),
+              "-c", "copy",
+              "-avoid_negative_ts", "make_zero",
+              "-movflags", "+faststart",
+              outFilename
+            );
+          }
         } catch (fastErr) {
           console.warn(`Fast stream copy failed for segment ${i + 1}, using ultrafast re-encode:`, fastErr);
-          await ffmpeg.run(
-            "-ss", String(startSec),
-            "-i", inSource,
-            "-t", String(duration),
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-tune", "zerolatency",
-            "-crf", "24",
-            "-c:a", "aac",
-            "-b:a", "128k",
-            "-movflags", "+faststart",
-            outFilename
-          );
+          if (isDashSlice && segAudioFile) {
+            await ffmpeg.run(
+              "-i", segVideoFile,
+              "-i", segAudioFile,
+              "-filter_complex",
+              `[0:v]trim=start=${dv.toFixed(3)}:duration=${duration.toFixed(3)},setpts=PTS-STARTPTS[v_out];[1:a]atrim=start=${da.toFixed(3)}:duration=${duration.toFixed(3)},asetpts=PTS-STARTPTS[a_out]`,
+              "-map", "[v_out]",
+              "-map", "[a_out]",
+              "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+              "-c:a", "aac", "-b:a", "128k",
+              "-movflags", "+faststart",
+              outFilename
+            );
+          } else {
+            await ffmpeg.run(
+              "-ss", String(isDashSlice ? dv : startSec),
+              "-i", segVideoFile,
+              "-t", String(duration),
+              "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+              "-c:a", "aac", "-b:a", "128k",
+              "-movflags", "+faststart",
+              outFilename
+            );
+          }
         }
       } else {
-        // Filter-complex overlay with branding / hook frame (-ss before -i, -t AFTER -i)
-        const args = ["-ss", String(startSec), "-i", inSource, "-t", String(duration)];
+        const args = isDashSlice
+          ? ["-i", segVideoFile]
+          : ["-ss", String(startSec), "-i", segVideoFile];
+
+        if (segAudioFile) {
+          args.push("-i", segAudioFile);
+        }
+
         const filterChains = [];
         let curV = "0:v";
-        let inIdx = 1;
+        let inIdx = segAudioFile ? 2 : 1;
+
+        if (isDashSlice) {
+          filterChains.push(`[${curV}]trim=start=${dv.toFixed(3)}:duration=${duration.toFixed(3)},setpts=PTS-STARTPTS[v_trim]`);
+          curV = "v_trim";
+        }
+
+        if (hasCrop) {
+          if (options.aspectRatio === "9:16") {
+            filterChains.push(`[${curV}]crop=w='min(iw\\,ih*9/16)':h='ih':x='(iw-ow)/2':y=0[v_crop]`);
+            curV = "v_crop";
+          } else if (options.aspectRatio === "1:1") {
+            filterChains.push(`[${curV}]crop=w='min(iw\\,ih)':h='min(iw\\,ih)':x='(iw-ow)/2':y='(ih-oh)/2'[v_crop]`);
+            curV = "v_crop";
+          }
+        }
 
         if (options.hookBuffer) {
           args.push("-i", inHook);
@@ -563,16 +643,33 @@ class MediaConverterEngine {
           inIdx++;
         }
 
+        if (hasSpeed) {
+          const ptsMult = (1 / options.speedRatio).toFixed(4);
+          filterChains.push(`[${curV}]setpts=${ptsMult}*PTS[v_speed]`);
+          curV = "v_speed";
+        }
+
+        const audioSrc = segAudioFile ? "1:a" : "0:a";
+        let curA = segAudioFile ? "1:a?" : "0:a?";
+        if (isDashSlice && segAudioFile) {
+          const speedChain = hasSpeed ? `,atempo=${options.speedRatio.toFixed(2)}` : "";
+          filterChains.push(`[${audioSrc}]atrim=start=${da.toFixed(3)}:duration=${duration.toFixed(3)},asetpts=PTS-STARTPTS${speedChain}[a_out]`);
+          curA = "[a_out]";
+        } else if (hasSpeed) {
+          filterChains.push(`[${audioSrc}]atempo=${options.speedRatio.toFixed(2)}[a_speed]`);
+          curA = "[a_speed]";
+        }
+
+        if (!isDashSlice) {
+          args.push("-t", String(duration));
+        }
+
         args.push(
           "-filter_complex", filterChains.join(";"),
           "-map", `[${curV}]`,
-          "-map", "0:a?",
-          "-c:v", "libx264",
-          "-preset", "ultrafast",
-          "-tune", "zerolatency",
-          "-crf", "24",
-          "-c:a", "aac",
-          "-b:a", "128k",
+          "-map", curA,
+          "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+          "-c:a", "aac", "-b:a", "128k",
           "-movflags", "+faststart",
           outFilename
         );
@@ -581,9 +678,11 @@ class MediaConverterEngine {
       }
 
       const clipData = ffmpeg.FS("readFile", outFilename);
-      try {
-        ffmpeg.FS("unlink", outFilename);
-      } catch (_) {}
+      try { ffmpeg.FS("unlink", outFilename); } catch (_) {}
+      if (isDashSlice) {
+        try { ffmpeg.FS("unlink", segVideoFile); } catch (_) {}
+        if (segAudioFile) { try { ffmpeg.FS("unlink", segAudioFile); } catch (_) {} }
+      }
 
       const blob = new Blob([clipData.buffer], { type: "video/mp4" });
       results.push({
@@ -609,7 +708,7 @@ class MediaConverterEngine {
     try {
       if (options.logoBuffer) ffmpeg.FS("unlink", inLogo);
       if (options.hookBuffer) ffmpeg.FS("unlink", inHook);
-      ffmpeg.FS("unlink", inSource);
+      if (!dashPayloads) ffmpeg.FS("unlink", inSource);
     } catch (_) {}
 
     onProgress({ stage: "ready", percent: 95, message: "All reels sliced successfully!" });
@@ -617,16 +716,23 @@ class MediaConverterEngine {
   }
 
   /**
+   * Converts a stream URL into a CORS-safe URL (using Cloudflare Worker proxy for googlevideo.com)
+   */
+  toEffectiveProxyUrl(url) {
+    if (!url) return url;
+    const apiBase = (window.downloaderEngine?.defaultSettings?.apiUrl || "https://clipper-resolver.download-reels.workers.dev").replace(/\/+$/, "");
+    if (url.includes("googlevideo.com") && !url.includes("/api/proxy")) {
+      return `${apiBase}/api/proxy?url=${encodeURIComponent(url)}`;
+    }
+    return url;
+  }
+
+  /**
    * Probes a URL for byte-range support and total content length.
    * Returns { supportsRange: bool, totalBytes: number, effectiveUrl: string }
    */
   async probeByteRange(url) {
-    const apiBase = (window.downloaderEngine?.defaultSettings?.apiUrl || "https://clipper-resolver.download-reels.workers.dev").replace(/\/+$/, "");
-
-    let probeUrl = url;
-    if (url.includes("googlevideo.com") && !url.includes("/api/proxy")) {
-      probeUrl = `${apiBase}/api/proxy?url=${encodeURIComponent(url)}`;
-    }
+    const probeUrl = this.toEffectiveProxyUrl(url);
 
     try {
       const resp = await fetch(probeUrl, { method: "HEAD", mode: "cors" });
@@ -652,6 +758,313 @@ class MediaConverterEngine {
     if (!resp.ok && resp.status !== 206) throw new Error(`Byte-range fetch failed: HTTP ${resp.status}`);
     const buf = await resp.arrayBuffer();
     return new Uint8Array(buf);
+  }
+
+  /**
+   * Fetches a byte-range slice using parallel concurrent connections for maximum throughput.
+   */
+  async fetchByteRangeParallel(effectiveUrl, byteStart, byteEnd, maxConnections = 6, onProgressBytes = null) {
+    const totalLen = byteEnd - byteStart + 1;
+    if (totalLen <= 384 * 1024 || maxConnections <= 1) {
+      const data = await this.fetchByteRange(effectiveUrl, byteStart, byteEnd);
+      if (onProgressBytes) onProgressBytes(data.byteLength, totalLen);
+      return data;
+    }
+
+    const numChunks = Math.min(maxConnections, Math.max(2, Math.ceil(totalLen / (512 * 1024))));
+    const chunkSize = Math.ceil(totalLen / numChunks);
+    const loadedPerChunk = new Array(numChunks).fill(0);
+
+    const chunks = await Promise.all(
+      Array.from({ length: numChunks }, async (_, idx) => {
+        const s = byteStart + idx * chunkSize;
+        const e = idx === numChunks - 1 ? byteEnd : Math.min(byteEnd, s + chunkSize - 1);
+        const part = await this.fetchByteRange(effectiveUrl, s, e);
+        loadedPerChunk[idx] = part.byteLength;
+        if (onProgressBytes) {
+          const sum = loadedPerChunk.reduce((a, b) => a + b, 0);
+          onProgressBytes(sum, totalLen);
+        }
+        return part;
+      })
+    );
+
+    const totalReceived = chunks.reduce((acc, c) => acc + c.byteLength, 0);
+    const combined = new Uint8Array(totalReceived);
+    let offset = 0;
+    for (const c of chunks) {
+      combined.set(c, offset);
+      offset += c.byteLength;
+    }
+    return combined;
+  }
+
+  /**
+   * High-speed buffer downloader that automatically uses 6x parallel HTTP Range streams when supported
+   */
+  async fetchParallelOrStreamBuffer(url, stageName, startPct, endPct, onProgress = () => {}) {
+    try {
+      const { supportsRange, totalBytes, effectiveUrl } = await this.probeByteRange(url);
+      if (supportsRange && totalBytes > 512 * 1024) {
+        return await this.fetchByteRangeParallel(effectiveUrl, 0, totalBytes - 1, 6, (loaded, total) => {
+          const ratio = loaded / total;
+          const pct = Math.min(endPct, Math.round(startPct + ratio * (endPct - startPct)));
+          const mbLoaded = (loaded / 1024 / 1024).toFixed(1);
+          const mbTotal = (total / 1024 / 1024).toFixed(1);
+          onProgress({
+            stage: "fetching",
+            percent: pct,
+            message: `Turbo downloading ${stageName}: ${mbLoaded}MB / ${mbTotal}MB...`
+          });
+        });
+      }
+    } catch (_) {}
+    return await this.fetchBufferWithProgress(url, stageName, startPct, endPct, onProgress);
+  }
+
+  /**
+   * Parses ISO-BMFF ftyp + moov (init segment) and sidx (Segment Index) box from DASH fMP4 header bytes.
+   * Returns { initBytes, subsegments: [{ startTime, endTime, startByte, endByte, size }], totalDuration } or null.
+   */
+  parseDashSidxHeader(bytes) {
+    if (!bytes || bytes.byteLength < 64) return null;
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    let pos = 0;
+    let initEnd = -1;
+    let sidxPos = -1;
+    let sidxSize = 0;
+
+    while (pos + 8 <= bytes.byteLength) {
+      const boxSize = view.getUint32(pos, false);
+      const boxType = String.fromCharCode(bytes[pos + 4], bytes[pos + 5], bytes[pos + 6], bytes[pos + 7]);
+      if (boxSize < 8) break;
+
+      if (boxType === "ftyp" || boxType === "moov") {
+        initEnd = pos + boxSize - 1;
+      } else if (boxType === "sidx") {
+        sidxPos = pos;
+        sidxSize = boxSize;
+        break;
+      } else if (boxType === "moof" || boxType === "mdat") {
+        break;
+      }
+      pos += boxSize;
+    }
+
+    if (initEnd < 0 || sidxPos < 0) return null;
+    if (sidxPos + sidxSize > bytes.byteLength) {
+      return { needsMoreBytes: sidxPos + sidxSize };
+    }
+
+    try {
+      const version = bytes[sidxPos + 8];
+      const timescale = view.getUint32(sidxPos + 16, false);
+      if (!timescale) return null;
+
+      let earliestPt = 0;
+      let firstOffset = 0;
+      let p = 0;
+      if (version === 0) {
+        earliestPt = view.getUint32(sidxPos + 20, false);
+        firstOffset = view.getUint32(sidxPos + 24, false);
+        p = sidxPos + 28;
+      } else {
+        earliestPt = Number(view.getBigUint64(sidxPos + 20, false));
+        firstOffset = Number(view.getBigUint64(sidxPos + 28, false));
+        p = sidxPos + 36;
+      }
+
+      const refCount = view.getUint16(p + 2, false);
+      p += 4;
+
+      let curByte = sidxPos + sidxSize + firstOffset;
+      let curTime = earliestPt / timescale;
+      const subsegments = [];
+
+      for (let i = 0; i < refCount && p + 12 <= sidxPos + sidxSize; i++) {
+        const w1 = view.getUint32(p, false);
+        const dur = view.getUint32(p + 4, false);
+        p += 12;
+
+        const refSize = w1 & 0x7fffffff;
+        const segDur = dur / timescale;
+        subsegments.push({
+          startTime: curTime,
+          endTime: curTime + segDur,
+          startByte: curByte,
+          endByte: curByte + refSize - 1,
+          size: refSize
+        });
+        curByte += refSize;
+        curTime += segDur;
+      }
+
+      if (subsegments.length === 0) return null;
+
+      return {
+        initBytes: bytes.slice(0, initEnd + 1),
+        subsegments,
+        totalDuration: curTime
+      };
+    } catch (e) {
+      console.warn("Failed to parse DASH sidx box:", e);
+      return null;
+    }
+  }
+
+  /**
+   * Probes a stream URL for a DASH sidx index box (fetches only the first 32-64KB!).
+   * Caches parsed sidx tables in memory so subsequent lookups are 0ms.
+   */
+  async probeDashStream(url, indexRangeHint = null) {
+    if (!url) return null;
+    if (!this._sidxCache) this._sidxCache = new Map();
+    if (this._sidxCache.has(url)) return this._sidxCache.get(url);
+
+    const effectiveUrl = this.toEffectiveProxyUrl(url);
+    let probeEnd = 65535;
+    if (indexRangeHint && typeof indexRangeHint === "string" && indexRangeHint.includes("-")) {
+      const hintEnd = parseInt(indexRangeHint.split("-")[1], 10);
+      if (!isNaN(hintEnd) && hintEnd > 0) {
+        probeEnd = Math.max(probeEnd, hintEnd + 256);
+      }
+    }
+
+    try {
+      let headerBytes = await this.fetchByteRange(effectiveUrl, 0, probeEnd);
+      let parsed = this.parseDashSidxHeader(headerBytes);
+      if (parsed && parsed.needsMoreBytes && parsed.needsMoreBytes < 1024 * 1024) {
+        headerBytes = await this.fetchByteRange(effectiveUrl, 0, parsed.needsMoreBytes + 64);
+        parsed = this.parseDashSidxHeader(headerBytes);
+      }
+      if (parsed && parsed.subsegments && parsed.subsegments.length > 0) {
+        const result = { ...parsed, effectiveUrl, url };
+        this._sidxCache.set(url, result);
+        return result;
+      }
+    } catch (err) {
+      console.warn("DASH sidx probe fell back:", err);
+    }
+    return null;
+  }
+
+  /**
+   * For DASH fMP4 videos (including 2-hour+ YouTube movies), fetches ONLY the exact 2-5MB
+   * moof+mdat byte ranges for the requested clip timestamps instead of the entire multi-GB file!
+   */
+  async fetchDashClipPayloads(sourceUrl, segments, options = {}, onProgress = () => {}) {
+    onProgress({ stage: "probe_sidx", percent: 4, message: "Reading DASH segment index (32KB header)..." });
+
+    const [videoSidx, audioSidx] = await Promise.all([
+      this.probeDashStream(sourceUrl, options.indexRange),
+      options.audioUrl ? this.probeDashStream(options.audioUrl, options.audioIndexRange) : Promise.resolve(null)
+    ]);
+
+    if (!videoSidx) return null;
+
+    const totalClips = segments.length;
+    const clipPayloads = new Array(totalClips);
+
+    // Pre-calculate exact byte slices for all segments
+    const slicePlans = segments.map((seg, i) => {
+      const startSec = this.parseTimeToSeconds(seg.start);
+      const endSec = Math.max(startSec + 0.5, this.parseTimeToSeconds(seg.end));
+
+      const vMatches = videoSidx.subsegments.filter(s => s.endTime > (startSec - 0.25) && s.startTime < (endSec + 0.5));
+      const vPicked = vMatches.length > 0 ? vMatches : [videoSidx.subsegments[0]];
+      const vByteStart = vPicked[0].startByte;
+      const vByteEnd = vPicked[vPicked.length - 1].endByte;
+      const vFragStartSec = vPicked[0].startTime;
+
+      let aByteStart = 0;
+      let aByteEnd = 0;
+      let aFragStartSec = 0;
+      if (audioSidx && audioSidx.subsegments.length > 0) {
+        const aMatches = audioSidx.subsegments.filter(s => s.endTime > (startSec - 0.5) && s.startTime < (endSec + 0.5));
+        const aPicked = aMatches.length > 0 ? aMatches : [audioSidx.subsegments[0]];
+        aByteStart = aPicked[0].startByte;
+        aByteEnd = aPicked[aPicked.length - 1].endByte;
+        aFragStartSec = aPicked[0].startTime;
+      }
+
+      const estBytes = (vByteEnd - vByteStart + 1) + (audioSidx ? (aByteEnd - aByteStart + 1) : 0);
+      return {
+        index: i,
+        startSec,
+        endSec,
+        vByteStart,
+        vByteEnd,
+        vFragStartSec,
+        aByteStart,
+        aByteEnd,
+        aFragStartSec,
+        estBytes
+      };
+    });
+
+    const totalEstBytes = slicePlans.reduce((sum, p) => sum + p.estBytes, 0);
+    const loadedPerPlan = new Array(totalClips).fill(0);
+
+    onProgress({
+      stage: "fetch_dash_slices",
+      percent: 7,
+      message: `Instant Range Slicing: Fetching only ${(totalEstBytes / 1024 / 1024).toFixed(1)} MB for ${totalClips} clip${totalClips > 1 ? "s" : ""}...`
+    });
+
+    const reportSliceProgress = () => {
+      const loaded = loadedPerPlan.reduce((a, b) => a + b, 0);
+      const pct = 7 + Math.round((loaded / Math.max(1, totalEstBytes)) * 21);
+      onProgress({
+        stage: "fetch_dash_slices",
+        percent: Math.min(28, pct),
+        message: `Fetching exact clip range (${(loaded / 1024 / 1024).toFixed(1)} / ${(totalEstBytes / 1024 / 1024).toFixed(1)} MB)...`
+      });
+    };
+
+    // Fetch segment byte ranges (up to 3 clips concurrently, each using parallel range connections)
+    for (let i = 0; i < slicePlans.length; i++) {
+      const plan = slicePlans[i];
+      let vLoaded = 0;
+      let aLoaded = 0;
+
+      const [vFrag, aFrag] = await Promise.all([
+        this.fetchByteRangeParallel(videoSidx.effectiveUrl, plan.vByteStart, plan.vByteEnd, 6, (b) => {
+          vLoaded = b;
+          loadedPerPlan[i] = vLoaded + aLoaded;
+          reportSliceProgress();
+        }),
+        audioSidx
+          ? this.fetchByteRangeParallel(audioSidx.effectiveUrl, plan.aByteStart, plan.aByteEnd, 4, (b) => {
+              aLoaded = b;
+              loadedPerPlan[i] = vLoaded + aLoaded;
+              reportSliceProgress();
+            })
+          : Promise.resolve(null)
+      ]);
+
+      // Prepend 740-byte ftyp+moov init segment to form a self-contained valid fMP4 buffer
+      const videoData = new Uint8Array(videoSidx.initBytes.byteLength + vFrag.byteLength);
+      videoData.set(videoSidx.initBytes, 0);
+      videoData.set(vFrag, videoSidx.initBytes.byteLength);
+
+      let audioData = null;
+      if (audioSidx && aFrag) {
+        audioData = new Uint8Array(audioSidx.initBytes.byteLength + aFrag.byteLength);
+        audioData.set(audioSidx.initBytes, 0);
+        audioData.set(aFrag, audioSidx.initBytes.byteLength);
+      }
+
+      clipPayloads[i] = {
+        videoData,
+        audioData,
+        vFragStartSec: plan.vFragStartSec,
+        aFragStartSec: plan.aFragStartSec,
+        isDashSlice: true,
+        sourceId: `dash_${i}_${Date.now()}`
+      };
+    }
+
+    return clipPayloads;
   }
 
   /**
@@ -743,11 +1156,11 @@ class MediaConverterEngine {
           url,
           data: combined,
           sourceId,
-          usedByteRange,
-          coveredUntilSec: usedByteRange ? maxEnd : Infinity
+          usedByteRange: false,
+          coveredUntilSec: Infinity
         };
 
-        return { fullData: combined, sourceId, usedByteRange };
+        return { fullData: combined, sourceId, usedByteRange: false };
       } catch (rangeErr) {
         console.warn("Parallel range fetch failed, falling back to standard stream download:", rangeErr);
       }
@@ -833,8 +1246,22 @@ class MediaConverterEngine {
       totalClips
     });
 
-    // 1. Smart fetch (in-memory cache + parallel chunk download)
-    const { fullData, sourceId } = await this.fetchSmartVideo(sourceUrl, segments, options, onProgress);
+    // 1. Check if source is a DASH fMP4 stream with a sidx index (e.g., 2-hour YouTube HD movies)
+    // If so, download ONLY the exact 2-5MB moof+mdat byte range per clip instead of the full multi-GB file!
+    let dashPayloads = null;
+    try {
+      dashPayloads = await this.fetchDashClipPayloads(sourceUrl, segments, options, onProgress);
+    } catch (dashErr) {
+      console.warn("DASH sidx clip slice fallback:", dashErr);
+    }
+
+    let fullData = null;
+    let sourceId = null;
+    if (!dashPayloads) {
+      const smart = await this.fetchSmartVideo(sourceUrl, segments, options, onProgress);
+      fullData = smart.fullData;
+      sourceId = smart.sourceId;
+    }
 
     const isIsolated = Boolean(window.crossOriginIsolated && typeof window.SharedArrayBuffer !== "undefined");
     const corePath = isIsolated
@@ -890,9 +1317,21 @@ class MediaConverterEngine {
 
           const transferList = [];
           let videoDataCopy = null;
+          let audioDataCopy = null;
+          const dp = dashPayloads ? dashPayloads[i] : null;
+          const segSourceId = dp ? dp.sourceId : sourceId;
 
-          // Only copy & transfer videoData if this worker doesn't already have sourceId cached!
-          if (slot.cachedSourceId !== sourceId) {
+          if (dp) {
+            videoDataCopy = new Uint8Array(dp.videoData.byteLength);
+            videoDataCopy.set(dp.videoData);
+            transferList.push(videoDataCopy.buffer);
+
+            if (dp.audioData) {
+              audioDataCopy = new Uint8Array(dp.audioData.byteLength);
+              audioDataCopy.set(dp.audioData);
+              transferList.push(audioDataCopy.buffer);
+            }
+          } else if (slot.cachedSourceId !== segSourceId) {
             videoDataCopy = new Uint8Array(fullData.length);
             videoDataCopy.set(fullData);
             transferList.push(videoDataCopy.buffer);
@@ -903,8 +1342,12 @@ class MediaConverterEngine {
             startSec,
             endSec,
             label: seg.label || `Reel_${i + 1}`,
-            sourceId,
+            sourceId: segSourceId,
             videoData: videoDataCopy,
+            audioData: audioDataCopy,
+            isDashSlice: Boolean(dp?.isDashSlice),
+            vFragStartSec: dp?.vFragStartSec || 0,
+            aFragStartSec: dp?.aFragStartSec || 0,
             corePath,
           };
 

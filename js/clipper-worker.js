@@ -66,6 +66,10 @@ self.onmessage = async (evt) => {
     label,
     sourceId,
     videoData,
+    audioData,
+    isDashSlice,
+    vFragStartSec,
+    aFragStartSec,
     corePath,
     logoBuffer,
     logoPosition,
@@ -80,8 +84,10 @@ self.onmessage = async (evt) => {
   const safeLabel = (label || `Reel_${segmentIndex + 1}`).replace(/[^a-zA-Z0-9_-]/g, "_");
   const exportName = `${safeLabel}_${formatTime(startSec).replace(":", "m")}s_${formatTime(endSec).replace(":", "m")}s.mp4`;
   const outFilename = `clip_${segmentIndex}_${ts}.mp4`;
+  const inAudio = `audio_${segmentIndex}_${ts}.m4a`;
   const inLogo = `logo_${segmentIndex}_${ts}.png`;
   const inHook = `hook_${segmentIndex}_${ts}.png`;
+  const hasSeparateAudio = Boolean(audioData && audioData.byteLength > 0);
 
   try {
     self.postMessage({
@@ -105,10 +111,14 @@ self.onmessage = async (evt) => {
     });
 
     // Write source to virtual FS only if not already cached for this sourceId
-    if (videoData && cachedSourceId !== sourceId) {
+    if (videoData && (isDashSlice || cachedSourceId !== sourceId)) {
       try { ffmpeg.FS("unlink", CACHED_SOURCE_FILE); } catch (_) {}
       ffmpeg.FS("writeFile", CACHED_SOURCE_FILE, videoData);
-      cachedSourceId = sourceId;
+      cachedSourceId = isDashSlice ? null : sourceId;
+    }
+
+    if (hasSeparateAudio) {
+      ffmpeg.FS("writeFile", inAudio, audioData);
     }
 
     const hasCrop = Boolean(aspectRatio && aspectRatio !== "original");
@@ -118,44 +128,118 @@ self.onmessage = async (evt) => {
     if (logoBuffer) ffmpeg.FS("writeFile", inLogo, logoBuffer);
     if (hookBuffer) ffmpeg.FS("writeFile", inHook, hookBuffer);
 
+    const dv = Math.max(0, startSec - (Number(vFragStartSec) || 0));
+    const da = Math.max(0, startSec - (Number(aFragStartSec) || 0));
+
     if (!hasOverlays) {
-      // ⚡ Instant lossless stream copy (-ss before -i + -t duration)
+      // ⚡ Instant lossless stream copy
       try {
-        await ffmpeg.run(
-          "-ss", String(startSec),
-          "-i", CACHED_SOURCE_FILE,
-          "-t", String(duration),
-          "-c", "copy",
-          "-avoid_negative_ts", "make_zero",
-          "-movflags", "+faststart",
-          outFilename
-        );
+        if (isDashSlice) {
+          if (hasSeparateAudio) {
+            await ffmpeg.run(
+              "-i", CACHED_SOURCE_FILE,
+              "-i", inAudio,
+              "-copyts",
+              "-ss", String(startSec),
+              "-t", String(duration),
+              "-map", "0:v:0",
+              "-map", "1:a:0",
+              "-c:v", "copy",
+              "-c:a", "copy",
+              "-avoid_negative_ts", "make_zero",
+              "-movflags", "+faststart",
+              outFilename
+            );
+          } else {
+            await ffmpeg.run(
+              "-i", CACHED_SOURCE_FILE,
+              "-copyts",
+              "-ss", String(startSec),
+              "-t", String(duration),
+              "-c", "copy",
+              "-avoid_negative_ts", "make_zero",
+              "-movflags", "+faststart",
+              outFilename
+            );
+          }
+        } else if (hasSeparateAudio) {
+          await ffmpeg.run(
+            "-ss", String(startSec),
+            "-i", CACHED_SOURCE_FILE,
+            "-ss", String(startSec),
+            "-i", inAudio,
+            "-t", String(duration),
+            "-map", "0:v:0",
+            "-map", "1:a:0",
+            "-c:v", "copy",
+            "-c:a", "copy",
+            "-avoid_negative_ts", "make_zero",
+            "-movflags", "+faststart",
+            outFilename
+          );
+        } else {
+          await ffmpeg.run(
+            "-ss", String(startSec),
+            "-i", CACHED_SOURCE_FILE,
+            "-t", String(duration),
+            "-c", "copy",
+            "-avoid_negative_ts", "make_zero",
+            "-movflags", "+faststart",
+            outFilename
+          );
+        }
       } catch (_) {
-        await ffmpeg.run(
-          "-ss", String(startSec),
-          "-i", CACHED_SOURCE_FILE,
-          "-t", String(duration),
-          "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
-          "-c:a", "aac", "-b:a", "128k",
-          "-movflags", "+faststart",
-          outFilename
-        );
+        if (isDashSlice && hasSeparateAudio) {
+          await ffmpeg.run(
+            "-i", CACHED_SOURCE_FILE,
+            "-i", inAudio,
+            "-filter_complex",
+            `[0:v]trim=start=${dv.toFixed(3)}:duration=${duration.toFixed(3)},setpts=PTS-STARTPTS[v_out];[1:a]atrim=start=${da.toFixed(3)}:duration=${duration.toFixed(3)},asetpts=PTS-STARTPTS[a_out]`,
+            "-map", "[v_out]",
+            "-map", "[a_out]",
+            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            outFilename
+          );
+        } else {
+          await ffmpeg.run(
+            "-ss", String(isDashSlice ? dv : startSec),
+            "-i", CACHED_SOURCE_FILE,
+            "-t", String(duration),
+            "-c:v", "libx264", "-preset", "ultrafast", "-crf", "23",
+            "-c:a", "aac", "-b:a", "128k",
+            "-movflags", "+faststart",
+            outFilename
+          );
+        }
       }
     } else {
-      // 🎨 Filter-complex overlay/crop/speed path (-ss before -i, -t AFTER -i)
-      const args = ["-ss", String(startSec), "-i", CACHED_SOURCE_FILE, "-t", String(duration)];
+      // 🎨 Filter-complex overlay/crop/speed path
+      const args = isDashSlice
+        ? ["-i", CACHED_SOURCE_FILE]
+        : ["-ss", String(startSec), "-i", CACHED_SOURCE_FILE];
+
+      if (hasSeparateAudio) {
+        if (!isDashSlice) args.push("-ss", String(startSec));
+        args.push("-i", inAudio);
+      }
+
       const filterChains = [];
       let curV = "0:v";
-      let inIdx = 1;
+      let inIdx = hasSeparateAudio ? 2 : 1;
+
+      if (isDashSlice) {
+        filterChains.push(`[${curV}]trim=start=${dv.toFixed(3)}:duration=${duration.toFixed(3)},setpts=PTS-STARTPTS[v_trim]`);
+        curV = "v_trim";
+      }
 
       // 1. Aspect Ratio Vertical Crop Filter (9:16 Shorts or 1:1 Square)
       if (hasCrop) {
         if (aspectRatio === "9:16") {
-          // Crop to 9:16 vertical centered: width = min(iw, ih*9/16), height = ih
           filterChains.push(`[${curV}]crop=w='min(iw\\,ih*9/16)':h='ih':x='(iw-ow)/2':y=0[v_crop]`);
           curV = "v_crop";
         } else if (aspectRatio === "1:1") {
-          // Crop to 1:1 square centered: min(iw, ih)
           filterChains.push(`[${curV}]crop=w='min(iw\\,ih)':h='min(iw\\,ih)':x='(iw-ow)/2':y='(ih-oh)/2'[v_crop]`);
           curV = "v_crop";
         }
@@ -190,11 +274,20 @@ self.onmessage = async (evt) => {
         curV = "v_speed";
       }
 
-      // 5. Audio Playback Speed Filter (atempo)
-      let curA = "0:a?";
-      if (hasSpeed) {
-        filterChains.push(`[0:a]atempo=${speedRatio.toFixed(2)}[a_speed]`);
+      // 5. Audio Mapping & Playback Speed Filter (atempo / atrim)
+      const audioSrc = hasSeparateAudio ? "1:a" : "0:a";
+      let curA = hasSeparateAudio ? "1:a?" : "0:a?";
+      if (isDashSlice && hasSeparateAudio) {
+        const speedChain = hasSpeed ? `,atempo=${speedRatio.toFixed(2)}` : "";
+        filterChains.push(`[${audioSrc}]atrim=start=${da.toFixed(3)}:duration=${duration.toFixed(3)},asetpts=PTS-STARTPTS${speedChain}[a_out]`);
+        curA = "[a_out]";
+      } else if (hasSpeed) {
+        filterChains.push(`[${audioSrc}]atempo=${speedRatio.toFixed(2)}[a_speed]`);
         curA = "[a_speed]";
+      }
+
+      if (!isDashSlice) {
+        args.push("-t", String(duration));
       }
 
       args.push(
@@ -215,6 +308,8 @@ self.onmessage = async (evt) => {
     const clipData = ffmpeg.FS("readFile", outFilename);
 
     try { ffmpeg.FS("unlink", outFilename); } catch (_) {}
+    if (isDashSlice) { try { ffmpeg.FS("unlink", CACHED_SOURCE_FILE); } catch (_) {} }
+    if (hasSeparateAudio) { try { ffmpeg.FS("unlink", inAudio); } catch (_) {} }
     if (logoBuffer) { try { ffmpeg.FS("unlink", inLogo); } catch (_) {} }
     if (hookBuffer) { try { ffmpeg.FS("unlink", inHook); } catch (_) {} }
 

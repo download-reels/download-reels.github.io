@@ -266,6 +266,40 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  const previewAudioPlayer = new Audio();
+  previewAudioPlayer.preload = "metadata";
+  let isPreviewVideoOnly = false;
+
+  function toProxyStreamUrl(rawStreamUrl) {
+    if (!rawStreamUrl) return rawStreamUrl;
+    if (rawStreamUrl.includes("googlevideo.com") && !rawStreamUrl.includes("/api/proxy")) {
+      const apiBase = (window.downloaderEngine?.defaultSettings?.apiUrl || "https://clipper-resolver.download-reels.workers.dev").replace(/\/+$/, "");
+      return `${apiBase}/api/proxy?url=${encodeURIComponent(rawStreamUrl)}`;
+    }
+    return rawStreamUrl;
+  }
+
+  if (videoPlayer) {
+    videoPlayer.addEventListener("play", () => {
+      if (isPreviewVideoOnly && previewAudioPlayer.src) {
+        previewAudioPlayer.currentTime = videoPlayer.currentTime;
+        previewAudioPlayer.play().catch(() => {});
+      }
+    });
+    videoPlayer.addEventListener("pause", () => {
+      if (isPreviewVideoOnly) previewAudioPlayer.pause();
+    });
+    videoPlayer.addEventListener("seeked", () => {
+      if (isPreviewVideoOnly && previewAudioPlayer.src) {
+        previewAudioPlayer.currentTime = videoPlayer.currentTime;
+      }
+    });
+    videoPlayer.addEventListener("volumechange", () => {
+      previewAudioPlayer.muted = videoPlayer.muted;
+      previewAudioPlayer.volume = videoPlayer.volume;
+    });
+  }
+
   function displayResult(media, originalUrl) {
     currentMedia = media;
     selectedFormat = media.formats && media.formats.length > 0 ? media.formats[0] : null;
@@ -278,14 +312,24 @@ document.addEventListener("DOMContentLoaded", () => {
     const platform = detectPlatform(originalUrl) || { name: media.platform || "Video", color: "#a1a1aa" };
     resultPlatformBadge.textContent = platform.name;
 
-    // Instant Preview Frame Loading
-    if (media.videoUrl) {
+    // Instant Preview Frame Loading (uses fast 360p/480p previewUrl on 2-hour movies for instant scrubbing)
+    const previewStream = media.previewUrl || media.videoUrl;
+    if (previewStream) {
       videoPlayer.preload = "metadata";
       videoPlayer.poster = media.thumbnailUrl || "";
-      videoPlayer.src = media.videoUrl;
-      videoPlayer.load(); // Forces immediate preview frame load
+      videoPlayer.src = toProxyStreamUrl(previewStream);
+      videoPlayer.load();
       videoPlayer.classList.remove("hidden");
       videoThumbnail.classList.add("hidden");
+
+      isPreviewVideoOnly = Boolean(media.previewIsVideoOnly || (selectedFormat && selectedFormat.videoOnly && !media.previewUrl));
+      if (isPreviewVideoOnly && media.audioUrl) {
+        previewAudioPlayer.src = toProxyStreamUrl(media.audioUrl);
+        previewAudioPlayer.load();
+      } else {
+        previewAudioPlayer.pause();
+        previewAudioPlayer.removeAttribute("src");
+      }
     } else if (media.thumbnailUrl) {
       videoThumbnail.src = media.thumbnailUrl;
       videoThumbnail.onerror = function() {
@@ -325,9 +369,10 @@ document.addEventListener("DOMContentLoaded", () => {
           });
           btn.className = "group relative inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-medium border border-primary bg-primary text-primary-foreground shadow-sm transition-all cursor-pointer";
           
-          // Switch video player stream immediately if video format
+          // Switch video player stream immediately if video format (keep fast preview on ultra-large files >400MB)
           if (fmt.url && !isAudio) {
-            videoPlayer.src = fmt.url;
+            const targetPreview = (fmt.size && fmt.size > 400 * 1024 * 1024 && media.previewUrl) ? media.previewUrl : fmt.url;
+            videoPlayer.src = toProxyStreamUrl(targetPreview);
             videoPlayer.load();
             videoPlayer.classList.remove("hidden");
             videoThumbnail.classList.add("hidden");
@@ -403,12 +448,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // If client-side WebAssembly remuxing is required (e.g. YouTube 1080p/720p/480p separate video + audio tracks)
     if (selectedFormat.needsMuxing && (selectedFormat.audioUrl || currentMedia.audioUrl) && window.mediaConverterEngine) {
-      primaryDownloadBtn.disabled = true;
-      const originalText = primaryDownloadBtn.innerHTML;
       const audioUrl = selectedFormat.audioUrl || currentMedia.audioUrl;
       const videoUrl = selectedFormat.url || currentMedia.videoUrl;
 
-      showToast(window.i18n ? window.i18n.t("toast.downloading") : "Merging HD video & audio tracks in browser...", "info");
+      // Browser 32-bit WebAssembly has a hard ~1.8GB heap ceiling (input + output in RAM).
+      // For multi-hour movies >550MB, trigger instant native browser stream download in <0.2s instead of stalling/OOMing RAM!
+      if (selectedFormat.size && selectedFormat.size > 550 * 1024 * 1024) {
+        showToast("Large movie (>550MB): Starting instant native stream download! (Use ✂️ Reel Clipper Studio to slice muxed HD clips in seconds)", "info");
+        await window.downloaderEngine.downloadFile(videoUrl, filename);
+        return;
+      }
+
+      primaryDownloadBtn.disabled = true;
+      const originalText = primaryDownloadBtn.innerHTML;
+
+      showToast(window.i18n ? window.i18n.t("toast.downloading") : "Turbo-downloading & merging HD video + audio in browser...", "info");
 
       try {
         const result = await window.mediaConverterEngine.mux(videoUrl, audioUrl, (p) => {
@@ -1608,23 +1662,37 @@ document.addEventListener("DOMContentLoaded", () => {
       burnOverlaysToggle.addEventListener("change", updateBurnOverlayUI);
     }
 
+    let lastClipMediaId = null;
+    const clipMiniAudio = new Audio();
+    clipMiniAudio.preload = "metadata";
+    let isClipMiniVideoOnly = false;
+
     if (openClipModalBtn) {
       openClipModalBtn.addEventListener("click", () => {
         if (!currentMedia) return;
-        let streamUrl = selectedFormat?.url || currentMedia.videoUrl;
-        if (!streamUrl) {
+        // Use fast preview stream (360p/480p) on long movies so scrubbing inside Studio is instant
+        let previewStreamUrl = currentMedia.previewUrl || selectedFormat?.url || currentMedia.videoUrl;
+        if (!previewStreamUrl) {
           showToast("No active video stream loaded.", "error");
           return;
         }
 
-        // Proxy YouTube streams for mini-player preview to bypass CORS
-        if (streamUrl.includes("googlevideo.com") && !streamUrl.includes("/api/proxy")) {
-          const apiBase = (window.downloaderEngine?.defaultSettings?.apiUrl || "https://clipper-resolver.download-reels.workers.dev").replace(/\/+$/, "");
-          streamUrl = `${apiBase}/api/proxy?url=${encodeURIComponent(streamUrl)}`;
+        try { videoPlayer.pause(); } catch (_) {}
+        try { previewAudioPlayer.pause(); } catch (_) {}
+
+        clipMiniPlayer.src = toProxyStreamUrl(previewStreamUrl);
+        clipMiniPlayer.load();
+
+        isClipMiniVideoOnly = Boolean(currentMedia.previewIsVideoOnly || (selectedFormat?.videoOnly && !currentMedia.previewUrl));
+        const audioTrackUrl = selectedFormat?.audioUrl || currentMedia.audioUrl;
+        if (isClipMiniVideoOnly && audioTrackUrl) {
+          clipMiniAudio.src = toProxyStreamUrl(audioTrackUrl);
+          clipMiniAudio.load();
+        } else {
+          clipMiniAudio.pause();
+          clipMiniAudio.removeAttribute("src");
         }
 
-        clipMiniPlayer.src = streamUrl;
-        clipMiniPlayer.load();
         clipModal.classList.remove("hidden");
 
         // Pre-warm FFmpeg Web Workers in the background
@@ -1632,12 +1700,13 @@ document.addEventListener("DOMContentLoaded", () => {
           window.mediaConverterEngine.prewarmWorkerPool(2);
         }
 
-        // Initialize smart adaptive segments based on video duration
-        const dur = (clipMiniPlayer && !isNaN(clipMiniPlayer.duration) && clipMiniPlayer.duration > 1)
-          ? clipMiniPlayer.duration
-          : (currentMedia?.duration ? parseFloat(currentMedia.duration) : 30);
+        // Initialize smart adaptive segments based on video duration (reset when media changes)
+        const dur = (currentMedia?.duration ? parseFloat(currentMedia.duration) : 0)
+          || ((clipMiniPlayer && !isNaN(clipMiniPlayer.duration) && clipMiniPlayer.duration > 1) ? clipMiniPlayer.duration : 30);
 
-        if (clipSegments.length === 0) {
+        const mediaKey = currentMedia.id || currentMedia.videoUrl || currentMedia.title;
+        if (clipSegments.length === 0 || lastClipMediaId !== mediaKey) {
+          lastClipMediaId = mediaKey;
           if (dur <= 20) {
             clipSegments = [
               { id: "seg_1", label: "Reel 1", start: "00:00", end: window.mediaConverterEngine.formatSecondsToTime(dur) }
@@ -1666,16 +1735,40 @@ document.addEventListener("DOMContentLoaded", () => {
     if (closeClipModalBtn) {
       closeClipModalBtn.addEventListener("click", () => {
         clipMiniPlayer.pause();
+        clipMiniAudio.pause();
         clipModal.classList.add("hidden");
         if (previewTimer) clearInterval(previewTimer);
       });
     }
 
     if (clipMiniPlayer) {
+      clipMiniPlayer.addEventListener("play", () => {
+        if (isClipMiniVideoOnly && clipMiniAudio.src) {
+          clipMiniAudio.currentTime = clipMiniPlayer.currentTime;
+          clipMiniAudio.play().catch(() => {});
+        }
+      });
+      clipMiniPlayer.addEventListener("pause", () => {
+        if (isClipMiniVideoOnly) clipMiniAudio.pause();
+      });
+      clipMiniPlayer.addEventListener("seeked", () => {
+        if (isClipMiniVideoOnly && clipMiniAudio.src) {
+          clipMiniAudio.currentTime = clipMiniPlayer.currentTime;
+        }
+      });
+      clipMiniPlayer.addEventListener("volumechange", () => {
+        clipMiniAudio.muted = clipMiniPlayer.muted;
+        clipMiniAudio.volume = clipMiniPlayer.volume;
+      });
       clipMiniPlayer.addEventListener("timeupdate", () => {
         clipCurrentTimeText.textContent = window.mediaConverterEngine.formatSecondsToTime(clipMiniPlayer.currentTime);
         if (clipMiniPlayer.duration) {
           clipDurationText.textContent = window.mediaConverterEngine.formatSecondsToTime(clipMiniPlayer.duration);
+        }
+        if (isClipMiniVideoOnly && !clipMiniPlayer.paused && clipMiniAudio.src) {
+          if (Math.abs(clipMiniPlayer.currentTime - clipMiniAudio.currentTime) > 0.35) {
+            clipMiniAudio.currentTime = clipMiniPlayer.currentTime;
+          }
         }
       });
       clipMiniPlayer.addEventListener("loadedmetadata", () => {
@@ -1836,12 +1929,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if (exportClipsBtn) {
       exportClipsBtn.addEventListener("click", async () => {
         if (!currentMedia || clipSegments.length === 0) return;
-        let streamUrl = selectedFormat?.url || currentMedia.videoUrl;
-        if (!streamUrl) return;
 
-        if (streamUrl.includes("googlevideo.com") && !streamUrl.includes("/api/proxy")) {
-          const apiBase = (window.downloaderEngine?.defaultSettings?.apiUrl || "https://clipper-resolver.download-reels.workers.dev").replace(/\/+$/, "");
-          streamUrl = `${apiBase}/api/proxy?url=${encodeURIComponent(streamUrl)}`;
+        // Pick an active video format for clipping (for ultra-long movies >30m, 720p HD or 480p slices 3x faster than 1080p)
+        let clipFmt = (selectedFormat && !selectedFormat.isAudio) ? selectedFormat : null;
+        if (!clipFmt && currentMedia.formats) {
+          clipFmt = currentMedia.formats.find(f => !f.isAudio && (f.quality === "720p" || f.quality === "480p"))
+            || currentMedia.formats.find(f => !f.isAudio);
+        }
+
+        let streamUrl = clipFmt?.url || currentMedia.videoUrl;
+        if (!streamUrl) return;
+        streamUrl = toProxyStreamUrl(streamUrl);
+
+        let audioStreamUrl = (clipFmt?.videoOnly || !clipFmt) ? (clipFmt?.audioUrl || currentMedia.audioUrl || null) : null;
+        if (audioStreamUrl) {
+          audioStreamUrl = toProxyStreamUrl(audioStreamUrl);
         }
 
         exportClipsBtn.disabled = true;
@@ -1855,7 +1957,12 @@ document.addEventListener("DOMContentLoaded", () => {
           // Prepare options (Logo watermark & Hook Frame banner, respecting burnOverlaysToggle)
           const shouldBurn = !burnOverlaysToggle || burnOverlaysToggle.checked;
           const sliceOptions = {
-            videoDuration: clipMiniPlayer?.duration || 0,
+            videoDuration: clipMiniPlayer?.duration || Number(currentMedia.duration) || 0,
+            audioUrl: audioStreamUrl,
+            initRange: clipFmt?.initRange || null,
+            indexRange: clipFmt?.indexRange || null,
+            audioInitRange: clipFmt?.audioInitRange || currentMedia.audioInitRange || null,
+            audioIndexRange: clipFmt?.audioIndexRange || currentMedia.audioIndexRange || null,
           };
 
           if (shouldBurn && enableLogoToggle && enableLogoToggle.checked && uploadedLogoBuffer) {

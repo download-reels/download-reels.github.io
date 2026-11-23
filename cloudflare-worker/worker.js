@@ -430,11 +430,12 @@ async function resolveYouTube(url) {
     "https://yt.chocolatemoo53.com"
   ];
 
+  const fieldsParam = "fields=title,author,lengthSeconds,description,videoThumbnails,formatStreams,adaptiveFormats";
   for (const inst of invidiousInstances) {
     try {
-      const res = await fetch(`${inst}/api/v1/videos/${videoId}`, {
+      const res = await fetch(`${inst}/api/v1/videos/${videoId}?${fieldsParam}`, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
           "Accept": "application/json"
         }
       });
@@ -514,25 +515,47 @@ function buildYouTubeInvidiousResult(videoId, data, thumbnailUrl) {
   const audioStreams = adaptive.filter(f => {
     const isAudio = f.type && f.type.includes("audio");
     const isM4a = f.container === "m4a" || (f.mime && f.mime.includes("mp4")) || (f.type && f.type.includes("audio/mp4"));
-    return isAudio && isM4a;
+    return isAudio && isM4a && f.url;
   });
-  const bestAudio = audioStreams.sort((a, b) => (parseInt(b.bitrate || "0", 10) - parseInt(a.bitrate || "0", 10)))[0]
-    || adaptive.find(f => f.type && f.type.includes("audio"));
+  const isLongVideo = (Number(data.lengthSeconds) || 0) > 2700;
+  const bestAudio = (isLongVideo
+    ? (audioStreams.find(a => String(a.itag) === "139") || audioStreams.find(a => String(a.itag) === "140"))
+    : (audioStreams.find(a => String(a.itag) === "140") || audioStreams[0])
+  ) || audioStreams.sort((a, b) => (parseInt(b.bitrate || "0", 10) - parseInt(a.bitrate || "0", 10)))[0]
+    || adaptive.find(f => f.type && f.type.includes("audio") && f.url);
   const audioUrl = bestAudio ? bestAudio.url : null;
+  const audioInit = bestAudio?.init || null;
+  const audioIndex = bestAudio?.index || null;
+  const audioSize = bestAudio?.clen ? parseInt(bestAudio.clen, 10) : undefined;
 
-  // Extract video streams (prioritizing MP4 H.264 for instant remuxing)
+  // Extract video streams (prioritizing MP4 H.264 for instant remuxing & DASH sidx slicing)
   const isMp4H264 = v => {
     const isMp4 = v.container === "mp4" || (v.mime && v.mime.includes("mp4")) || (v.type && v.type.includes("mp4"));
     const isH264 = !v.encoding || v.encoding === "h264" || (v.type && v.type.includes("avc1"));
-    return isMp4 && isH264;
+    return isMp4 && isH264 && v.url;
   };
   const videoStreams = adaptive.filter(f => f.type && f.type.includes("video") && isMp4H264(f));
+
+  const directStreams = [];
+  if (data.formatStreams && data.formatStreams.length > 0) {
+    data.formatStreams.forEach(fs => {
+      if (fs.url) {
+        directStreams.push({
+          label: `MP4 ${fs.resolution || "360p"} (Instant Direct)`,
+          url: fs.url,
+          quality: fs.resolution || "360p",
+          ext: "mp4",
+          videoOnly: false
+        });
+      }
+    });
+  }
 
   const tiers = [
     { label: "1080p Full HD", quality: "1080p", minHeight: 1080 },
     { label: "720p HD", quality: "720p", minHeight: 720 },
     { label: "480p", quality: "480p", minHeight: 480 },
-    { label: "360p", quality: "360p", minHeight: 360 }
+    { label: "360p Fast", quality: "360p", minHeight: 360 }
   ];
 
   const addedTiers = new Set();
@@ -544,33 +567,34 @@ function buildYouTubeInvidiousResult(videoId, data, thumbnailUrl) {
 
     if (candidate && candidate.url) {
       addedTiers.add(tier.quality);
+      const vSize = candidate.clen ? parseInt(candidate.clen, 10) : undefined;
       formats.push({
         label: tier.label,
         url: candidate.url,
         audioUrl: audioUrl,
         quality: tier.quality,
         ext: "mp4",
+        itag: candidate.itag,
+        initRange: candidate.init || null,
+        indexRange: candidate.index || null,
+        audioInitRange: audioInit,
+        audioIndexRange: audioIndex,
         videoOnly: true,
         needsMuxing: Boolean(audioUrl),
-        size: candidate.clen ? parseInt(candidate.clen, 10) : undefined
+        size: vSize && audioSize ? (vSize + audioSize) : vSize
       });
     }
   });
 
-  // Direct progressive streams if available
-  if (data.formatStreams && data.formatStreams.length > 0) {
-    data.formatStreams.forEach(fs => {
-      if (fs.url) {
-        formats.push({
-          label: `MP4 ${fs.resolution || "360p"} (Direct Stream)`,
-          url: fs.url,
-          quality: fs.resolution || "360p",
-          ext: "mp4",
-          videoOnly: false
-        });
-      }
-    });
+  if (isLongVideo && formats.length > 1) {
+    const preferredIdx = formats.findIndex(f => f.quality === "720p" || f.quality === "480p" || f.quality === "360p");
+    if (preferredIdx > 0) {
+      const [pref] = formats.splice(preferredIdx, 1);
+      formats.unshift(pref);
+    }
   }
+
+  directStreams.forEach(ds => formats.push(ds));
 
   // Audio / MP3 format choices
   if (audioUrl) {
@@ -581,7 +605,8 @@ function buildYouTubeInvidiousResult(videoId, data, thumbnailUrl) {
       ext: "mp3",
       isAudio: true,
       bitrate: "320k",
-      needsConversion: true
+      needsConversion: true,
+      size: audioSize
     });
     formats.push({
       label: "MP3 Audio (192 kbps Standard)",
@@ -590,24 +615,30 @@ function buildYouTubeInvidiousResult(videoId, data, thumbnailUrl) {
       ext: "mp3",
       isAudio: true,
       bitrate: "192k",
-      needsConversion: true
+      needsConversion: true,
+      size: audioSize
     });
     formats.push({
-      label: "Original Audio (M4A)",
+      label: "Original Audio (M4A Instant)",
       url: audioUrl,
       quality: "Original Audio",
       ext: "m4a",
-      isAudio: true
+      isAudio: true,
+      size: audioSize
     });
   }
 
-  const directStreamUrl = (data.formatStreams && data.formatStreams[0]?.url) || null;
+  const directStreamUrl = directStreams[0]?.url || null;
+  const fastPreviewFmt = directStreams[0]
+    || formats.find(f => !f.isAudio && (f.quality === "360p" || f.quality === "480p"))
+    || formats.find(f => !f.isAudio);
 
   return {
     status: "success",
     platform: "youtube",
     id: videoId,
     title: data.title || "YouTube Video",
+    description: data.description || "",
     author: data.author || "YouTube Creator",
     authorHandle: null,
     thumbnailUrl: (() => {
@@ -621,7 +652,11 @@ function buildYouTubeInvidiousResult(videoId, data, thumbnailUrl) {
     })(),
     duration: data.lengthSeconds,
     videoUrl: directStreamUrl || formats[0]?.url || null,
+    previewUrl: fastPreviewFmt?.url || directStreamUrl || formats[0]?.url || null,
+    previewIsVideoOnly: Boolean(fastPreviewFmt && fastPreviewFmt.videoOnly),
     audioUrl: audioUrl,
+    audioInitRange: audioInit,
+    audioIndexRange: audioIndex,
     formats,
     source: "invidious"
   };
