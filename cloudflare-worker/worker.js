@@ -148,6 +148,7 @@ async function proxyMedia(mediaUrl, filename, forceDownload = false, clientReque
   if (cr) newHeaders.set("content-range", cr);
   const ar = response.headers.get("accept-ranges");
   if (ar) newHeaders.set("accept-ranges", ar);
+  if (response.url) newHeaders.set("x-final-url", response.url);
 
   Object.entries(getCorsHeaders()).forEach(([k, v]) => newHeaders.set(k, v));
 
@@ -1326,7 +1327,7 @@ function getCorsHeaders() {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, HEAD, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, Range",
-    "Access-Control-Expose-Headers": "Content-Length, Content-Range, Accept-Ranges",
+    "Access-Control-Expose-Headers": "Content-Length, Content-Range, Accept-Ranges, X-Final-Url",
     "Access-Control-Max-Age": "86400",
   };
 }

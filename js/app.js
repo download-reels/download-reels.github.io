@@ -401,6 +401,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     showToast(window.i18n ? window.i18n.t("toast.previewLoaded") : "Preview loaded! Ready to download.", "success");
 
+    // Pre-warm DASH sidx segment index & resolve 302 regional edge URLs in the background immediately
+    if (window.mediaConverterEngine?.prewarmDashSidx && selectedFormat && selectedFormat.videoOnly) {
+      window.mediaConverterEngine.prewarmDashSidx(
+        selectedFormat.url,
+        selectedFormat.audioUrl || media.audioUrl,
+        selectedFormat.indexRange,
+        selectedFormat.audioIndexRange || media.audioIndexRange
+      );
+    }
+
     // Save to history
     saveToHistory(media, originalUrl);
 
@@ -1695,9 +1705,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
         clipModal.classList.remove("hidden");
 
-        // Pre-warm FFmpeg Web Workers in the background
+        // Pre-warm FFmpeg Web Workers & DASH sidx index in the background
         if (window.mediaConverterEngine?.prewarmWorkerPool) {
           window.mediaConverterEngine.prewarmWorkerPool(2);
+        }
+        if (window.mediaConverterEngine?.prewarmDashSidx && selectedFormat && selectedFormat.videoOnly) {
+          window.mediaConverterEngine.prewarmDashSidx(
+            selectedFormat.url,
+            selectedFormat.audioUrl || currentMedia.audioUrl,
+            selectedFormat.indexRange,
+            selectedFormat.audioIndexRange || currentMedia.audioIndexRange
+          );
         }
 
         // Initialize smart adaptive segments based on video duration (reset when media changes)
