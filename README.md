@@ -4,6 +4,24 @@
 
 🌐 **Live Web Utility**: [**https://download-reels.github.io/**](https://download-reels.github.io/)
 
+### 🚀 Direct Tool Pages & Studio Silos
+- ✂️ [**YouTube Video Cutter & Multi-Reel Clipper Studio (Free OpusClip Alternative)**](https://download-reels.github.io/youtube-video-cutter.html) — Cut 2-hour YouTube movies & podcasts in 2 seconds via DASH `sidx` byte-range slicing, auto-crop to 9:16 vertical Shorts/Reels, add 1st-second viral hook banners, and export in parallel across WebAssembly CPU cores.
+- 🎧 [**YouTube to MP3 Converter (320kbps Ultra HQ) & Shorts Downloader**](https://download-reels.github.io/youtube-to-mp3.html) — Extract true 320kbps CBR MP3 or lossless WAV audio in-browser via FFmpeg WebAssembly, or save 1080p YouTube Shorts.
+- 📸 [**Instagram Reel Downloader (1080p HD No Watermark & Bulk Account ZIP)**](https://download-reels.github.io/instagram-reel-downloader.html) — Download Instagram Reels in original 1080p MP4 or browse creator profiles to bulk-download up to 100 reels at once into a ZIP archive.
+- 🎵 [**TikTok Video Downloader Without Watermark (1080p HD & Original MP3)**](https://download-reels.github.io/tiktok-video-downloader.html) — Save clean watermark-free TikTok MP4 videos and original background audio tracks.
+
+### 📚 Engineering Guides & Tutorials
+- [**Engineering Blog Hub**](https://download-reels.github.io/blog/)
+- [**How to Download All Reels from an Instagram Account or YouTube Channel (Bulk 100-Reel ZIP)**](https://download-reels.github.io/blog/how-to-download-all-reels-from-instagram-account.html)
+- [**SaveFrom.net Shutting Down: Best Free & Ad-Free Alternative (1080p & 320kbps MP3)**](https://download-reels.github.io/blog/savefrom-net-shutting-down-alternative.html)
+- [**How to Download Instagram Reels & YouTube Shorts with Python (yt-dlp & Async)**](https://download-reels.github.io/blog/how-to-download-reels-python.html)
+- [**JavaScript & Node.js Video Stream Downloader (Fetch API & ReadableStreams)**](https://download-reels.github.io/blog/how-to-download-videos-javascript-nodejs.html)
+- [**High-Throughput Concurrent Video Downloader in Go (Goroutines & Range Headers)**](https://download-reels.github.io/blog/download-videos-golang.html)
+- [**Ultra-Fast Media Scraping & Video Extraction in Rust (Tokio & Reqwest)**](https://download-reels.github.io/blog/download-reels-rust.html)
+- [**The Ultimate FFmpeg Cheatsheet: Transcoding, Muxing & 9:16 Vertical Cropping**](https://download-reels.github.io/blog/ffmpeg-video-encoding-guide.html)
+- [**Mastering yt-dlp & youtube-dl: Complete CLI Cheatsheet & Automation**](https://download-reels.github.io/blog/youtube-dl-ytdlp-cli-guide.html)
+- [**Video SEO Masterclass: How to Rank Video Tools & Reels #1 on Google**](https://download-reels.github.io/blog/video-seo-ranking-guide.html)
+
 ---
 
 ## 💡 Why This Project Was Created
