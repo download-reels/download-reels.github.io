@@ -806,32 +806,15 @@ async function resolveTikTok(url) {
 
 /**
  * Resolves Facebook Reel, Watch, or Share link (/share/r/, /share/v/, /reel/, /watch/)
+ * Uses a 2-stage strategy that bypasses datacenter IP login walls:
+ *   Stage 1: Resolve share/short links via facebookexternalhit crawler UA to obtain canonical numeric video_id, title & thumbnail.
+ *   Stage 2: Query public /video/embed?video_id=<id> and /plugins/video.php iframe endpoints + page fallback for direct HD/SD MP4 streams.
  */
 async function resolveFacebook(url) {
-  const headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Upgrade-Insecure-Requests": "1",
-  };
-
-  const res = await fetch(url, { headers, redirect: "follow" });
-  const html = await res.text();
-  const finalUrl = res.url || url;
-
-  const idMatch = finalUrl.match(/\/(?:reel|reels|videos)\/(\d+)/i) || url.match(/\/(?:reel|reels|videos|share\/r|share\/v)\/([A-Za-z0-9_-]+)/i);
-  const videoId = idMatch ? idMatch[1] : null;
-
   const cleanStream = (u) => {
     if (!u) return null;
     try {
-      return decodeHtml(
-        JSON.parse(`"${u.replace(/"/g, '\\"')}"`)
-      );
+      return decodeHtml(JSON.parse(`"${u.replace(/"/g, '\\"')}"`));
     } catch (_) {
       return decodeHtml(
         u.replace(/\\u0025/g, "%")
@@ -844,64 +827,159 @@ async function resolveFacebook(url) {
     }
   };
 
-  // Narrow search window around the primary video ID if present so we don't grab a suggested reel lower in the feed
-  let searchScope = html;
-  if (videoId && /^\d+$/.test(videoId)) {
-    const idIdx = html.indexOf(`"${videoId}"`);
-    if (idIdx !== -1) {
-      searchScope = html.substring(Math.max(0, idIdx - 5000), Math.min(html.length, idIdx + 25000));
+  let videoId = (
+    url.match(/\/(?:reel|reels|videos)\/(\d+)/i) ||
+    url.match(/[?&]v=(\d+)/i)
+  )?.[1] || null;
+
+  let metaTitle = null;
+  let metaThumb = null;
+  let metaAuthor = null;
+  let crawlerHtml = "";
+
+  // Stage 1: Fetch via facebookexternalhit/1.1 to resolve /share/r/ or fb.watch redirects and extract metadata without datacenter login wall
+  try {
+    const crawlRes = await fetch(url, {
+      redirect: "follow",
+      headers: {
+        "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      }
+    });
+    crawlerHtml = await crawlRes.text();
+    const resolvedUrl = crawlRes.url || url;
+
+    if (!videoId) {
+      const ogUrl = crawlerHtml.match(/<meta\s+(?:property|name)="og:url"\s+content="([^"]+)"/i)?.[1] || "";
+      const idFromResolved =
+        resolvedUrl.match(/\/(?:reel|reels|videos)\/(\d+)/i) ||
+        resolvedUrl.match(/[?&]v=(\d+)/i) ||
+        ogUrl.match(/\/(?:reel|reels|videos)\/(\d+)/i) ||
+        ogUrl.match(/[?&]v=(\d+)/i) ||
+        crawlerHtml.match(/media_id=(\d+)/i) ||
+        crawlerHtml.match(/"video_id":"(\d+)"/i);
+      if (idFromResolved) videoId = idFromResolved[1];
     }
+
+    const tMatch =
+      crawlerHtml.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i) ||
+      crawlerHtml.match(/<meta\s+(?:property|name)="description"\s+content="([^"]+)"/i) ||
+      crawlerHtml.match(/<title>([^<]+)<\/title>/i);
+    if (tMatch) metaTitle = decodeHtml(tMatch[1]);
+
+    const imgMatch =
+      crawlerHtml.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i) ||
+      crawlerHtml.match(/"preferred_thumbnail":\{"image":\{"uri":"([^"]+)"/) ||
+      crawlerHtml.match(/"uri":"(https:\\\/\\\/scontent[^"]+?\.jpg[^"]*)"/);
+    if (imgMatch) metaThumb = cleanStream(imgMatch[1]);
+
+    const ogUrlVal = crawlerHtml.match(/<meta\s+(?:property|name)="og:url"\s+content="([^"]+)"/i)?.[1] || "";
+    const authorSlug = ogUrlVal.match(/facebook\.com\/([^\/]+)\/videos\//i)?.[1];
+    if (authorSlug && !["reel", "reels", "watch", "share"].includes(authorSlug.toLowerCase())) {
+      metaAuthor = `@${authorSlug}`;
+    }
+  } catch (_) {}
+
+  // Stage 2: Extract direct HD & SD MP4 CDN URLs from public embed endpoints + desktop page
+  const candidateEndpoints = [];
+  if (videoId) {
+    candidateEndpoints.push(`https://www.facebook.com/video/embed?video_id=${videoId}`);
+    candidateEndpoints.push(`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/reel/${videoId}/`)}`);
+    candidateEndpoints.push(`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/watch/?v=${videoId}`)}`);
+    candidateEndpoints.push(`https://www.facebook.com/reel/${videoId}/`);
+  }
+  candidateEndpoints.push(url);
+
+  let hdUrl = null;
+  let sdUrl = null;
+  let durationSec = undefined;
+
+  const extractFromHtml = (htmlStr) => {
+    if (!htmlStr) return;
+    let scope = htmlStr;
+    if (videoId && /^\d+$/.test(videoId)) {
+      const idx = htmlStr.indexOf(`"${videoId}"`);
+      if (idx !== -1) {
+        scope = htmlStr.substring(Math.max(0, idx - 5000), Math.min(htmlStr.length, idx + 25000));
+      }
+    }
+
+    const hdM =
+      scope.match(/"hd_src_no_ratelimit":"([^"]+)"/) ||
+      scope.match(/"hd_src":"([^"]+)"/) ||
+      scope.match(/"browser_native_hd_url":"([^"]+)"/) ||
+      scope.match(/"playable_url_quality_hd":"([^"]+)"/) ||
+      htmlStr.match(/"hd_src_no_ratelimit":"([^"]+)"/) ||
+      htmlStr.match(/"hd_src":"([^"]+)"/) ||
+      htmlStr.match(/"browser_native_hd_url":"([^"]+)"/) ||
+      htmlStr.match(/"playable_url_quality_hd":"([^"]+)"/);
+
+    const sdM =
+      scope.match(/"sd_src_no_ratelimit":"([^"]+)"/) ||
+      scope.match(/"sd_src":"([^"]+)"/) ||
+      scope.match(/"browser_native_sd_url":"([^"]+)"/) ||
+      scope.match(/"playable_url":"([^"]+)"/) ||
+      htmlStr.match(/"sd_src_no_ratelimit":"([^"]+)"/) ||
+      htmlStr.match(/"sd_src":"([^"]+)"/) ||
+      htmlStr.match(/"browser_native_sd_url":"([^"]+)"/) ||
+      htmlStr.match(/"playable_url":"([^"]+)"/);
+
+    const candHd = cleanStream(hdM?.[1]);
+    const candSd = cleanStream(sdM?.[1]);
+    if (candHd && !candHd.includes("lookaside.fbsbx.com") && !hdUrl) hdUrl = candHd;
+    if (candSd && !candSd.includes("lookaside.fbsbx.com") && !sdUrl) sdUrl = candSd;
+
+    if (!durationSec) {
+      const durM = scope.match(/"playable_duration_in_ms":(\d+)/) || htmlStr.match(/"playable_duration_in_ms":(\d+)/);
+      if (durM) durationSec = Math.round(parseInt(durM[1], 10) / 1000);
+    }
+    if (!metaThumb) {
+      const thM =
+        htmlStr.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i) ||
+        scope.match(/"preferred_thumbnail":\{"image":\{"uri":"([^"]+)"/) ||
+        scope.match(/"uri":"(https:\\\/\\\/scontent[^"]+?\.jpg[^"]*)"/);
+      if (thM) metaThumb = cleanStream(thM[1]);
+    }
+    if (!metaTitle) {
+      const tiM =
+        htmlStr.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i) ||
+        htmlStr.match(/<title>([^<]+)<\/title>/i);
+      if (tiM) metaTitle = decodeHtml(tiM[1]);
+    }
+  };
+
+  extractFromHtml(crawlerHtml);
+
+  for (const ep of candidateEndpoints) {
+    if (hdUrl && sdUrl) break;
+    try {
+      const isEmbed = ep.includes("/embed") || ep.includes("/plugins/");
+      const epRes = await fetch(ep, {
+        redirect: "follow",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Referer": "https://www.facebook.com/",
+          "Sec-Fetch-Dest": isEmbed ? "iframe" : "document",
+          "Sec-Fetch-Mode": "navigate",
+          "Sec-Fetch-Site": isEmbed ? "cross-site" : "none",
+        }
+      });
+      if (!epRes.ok) continue;
+      const epHtml = await epRes.text();
+      extractFromHtml(epHtml);
+    } catch (_) {}
   }
 
-  const hdMatch =
-    searchScope.match(/"browser_native_hd_url":"([^"]+)"/) ||
-    searchScope.match(/"playable_url_quality_hd":"([^"]+)"/) ||
-    searchScope.match(/"hd_src_no_ratelimit":"([^"]+)"/) ||
-    searchScope.match(/"hd_src":"([^"]+)"/) ||
-    html.match(/"browser_native_hd_url":"([^"]+)"/) ||
-    html.match(/"playable_url_quality_hd":"([^"]+)"/);
-
-  const sdMatch =
-    searchScope.match(/"browser_native_sd_url":"([^"]+)"/) ||
-    searchScope.match(/"playable_url":"([^"]+)"/) ||
-    searchScope.match(/"sd_src_no_ratelimit":"([^"]+)"/) ||
-    searchScope.match(/"sd_src":"([^"]+)"/) ||
-    html.match(/"browser_native_sd_url":"([^"]+)"/) ||
-    html.match(/"playable_url":"([^"]+)"/);
-
-  const ogVideo = html.match(/<meta\s+(?:property|name)="og:video(?::secure_url)?"\s+content="([^"]+)"/i);
-  const titleMatch =
-    html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i) ||
-    html.match(/<meta\s+(?:property|name)="description"\s+content="([^"]+)"/i) ||
-    html.match(/<title>([^<]+)<\/title>/i);
-
-  const thumbMatch =
-    html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i) ||
-    searchScope.match(/"preferred_thumbnail":\{"image":\{"uri":"([^"]+)"/) ||
-    searchScope.match(/"uri":"(https:\\\/\\\/scontent[^"]+?\.jpg[^"]*)"/);
-
-  const durMatch =
-    searchScope.match(/"playable_duration_in_ms":(\d+)/) ||
-    html.match(/"playable_duration_in_ms":(\d+)/);
-  const durationSec = durMatch ? Math.round(parseInt(durMatch[1], 10) / 1000) : undefined;
-
-  const ogUrlMatch = html.match(/<meta\s+(?:property|name)="og:url"\s+content="([^"]+)"/i);
-  const authorFromUrl = ogUrlMatch?.[1]?.match(/facebook\.com\/([^\/]+)\/videos\//i)?.[1];
-  const authorFromTitle = titleMatch?.[1]?.match(/\|\s*([^|]+?)\s*$/)?.[1];
-  const author = authorFromUrl ? `@${authorFromUrl}` : (authorFromTitle ? decodeHtml(authorFromTitle.trim()) : "Facebook Creator");
-
-  const hdUrl = cleanStream(hdMatch?.[1]);
-  const sdUrl = cleanStream(sdMatch?.[1]);
-  const ogUrl = cleanStream(ogVideo?.[1]);
-
-  const targetVideoUrl = hdUrl || sdUrl || ogUrl;
-  if (targetVideoUrl && !targetVideoUrl.includes("lookaside.fbsbx.com")) {
+  const targetVideoUrl = hdUrl || sdUrl;
+  if (targetVideoUrl) {
     const formats = [];
     if (hdUrl) formats.push({ label: "HD MP4 (1080p / 720p)", url: hdUrl, quality: "1080p HD", ext: "mp4" });
     if (sdUrl && sdUrl !== hdUrl) formats.push({ label: "Standard MP4 (360p Fast)", url: sdUrl, quality: "360p", ext: "mp4" });
     if (formats.length === 0) formats.push({ label: "MP4 Video", url: targetVideoUrl, quality: "HD", ext: "mp4" });
 
-    // Expose client-side MP3 audio extraction pills
     formats.push({
       label: "MP3 Audio (320 kbps Ultra HQ)",
       url: sdUrl || targetVideoUrl,
@@ -912,7 +990,7 @@ async function resolveFacebook(url) {
       needsConversion: true,
     });
 
-    let rawTitle = titleMatch ? decodeHtml(titleMatch[1]) : "Facebook Reel";
+    let rawTitle = metaTitle || "Facebook Reel";
     rawTitle = rawTitle.replace(/^[\d.,]+[KMkm]?\s+views\s*·\s*[\d.,]+[KMkm]?\s+reactions\s*\|\s*/i, "").trim();
 
     return {
@@ -920,9 +998,9 @@ async function resolveFacebook(url) {
       platform: "facebook",
       id: videoId || "fb_reel",
       title: rawTitle || "Facebook Reel",
-      author,
+      author: metaAuthor || "Facebook Creator",
       duration: durationSec,
-      thumbnailUrl: thumbMatch ? cleanStream(thumbMatch[1]) : null,
+      thumbnailUrl: metaThumb,
       videoUrl: targetVideoUrl,
       audioUrl: sdUrl || targetVideoUrl,
       formats,
