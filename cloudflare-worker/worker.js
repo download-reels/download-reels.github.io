@@ -837,20 +837,65 @@ async function resolveFacebook(url) {
   let metaAuthor = null;
   let crawlerHtml = "";
 
-  // Stage 1: Fetch via facebookexternalhit/1.1 to resolve /share/r/ or fb.watch redirects and extract metadata without datacenter login wall
-  try {
-    const crawlRes = await fetch(url, {
-      redirect: "follow",
-      headers: {
-        "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
+  // Stage 1: Resolve /share/r/, /share/v/, or fb.watch short links via manual redirect hop inspection
+  // Using redirect: "manual" grabs the Location: https://www.facebook.com/reel/<id> header on the very first 302 hop
+  // before Facebook's second hop redirects datacenter IPs to /login/!
+  if (!videoId) {
+    let curUrl = url;
+    for (let hop = 0; hop < 3 && !videoId; hop++) {
+      try {
+        const hopRes = await fetch(curUrl, {
+          redirect: "manual",
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "none",
+            "Sec-Fetch-User": "?1",
+            "Upgrade-Insecure-Requests": "1",
+          }
+        });
+        const loc = hopRes.headers.get("location") || "";
+        if (loc) {
+          let decodedLoc = loc;
+          try { decodedLoc = decodeURIComponent(loc); } catch (_) {}
+          const idFromLoc =
+            loc.match(/\/(?:reel|reels|videos)\/(\d+)/i) ||
+            loc.match(/[?&]v=(\d+)/i) ||
+            decodedLoc.match(/\/(?:reel|reels|videos)\/(\d+)/i) ||
+            decodedLoc.match(/[?&]v=(\d+)/i);
+          if (idFromLoc) {
+            videoId = idFromLoc[1];
+            break;
+          }
+          if (!loc.includes("/login")) {
+            curUrl = loc.startsWith("http") ? loc : `https://www.facebook.com${loc}`;
+          } else {
+            break;
+          }
+        } else {
+          break;
+        }
+      } catch (_) {
+        break;
       }
-    });
-    crawlerHtml = await crawlRes.text();
-    const resolvedUrl = crawlRes.url || url;
+    }
+  }
 
-    if (!videoId) {
+  // Fallback Stage 1b: If manual hop didn't yield videoId, try facebookexternalhit crawler UA
+  if (!videoId) {
+    try {
+      const crawlRes = await fetch(url, {
+        redirect: "follow",
+        headers: {
+          "User-Agent": "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        }
+      });
+      crawlerHtml = await crawlRes.text();
+      const resolvedUrl = crawlRes.url || url;
       const ogUrl = crawlerHtml.match(/<meta\s+(?:property|name)="og:url"\s+content="([^"]+)"/i)?.[1] || "";
       const idFromResolved =
         resolvedUrl.match(/\/(?:reel|reels|videos)\/(\d+)/i) ||
@@ -860,36 +905,23 @@ async function resolveFacebook(url) {
         crawlerHtml.match(/media_id=(\d+)/i) ||
         crawlerHtml.match(/"video_id":"(\d+)"/i);
       if (idFromResolved) videoId = idFromResolved[1];
-    }
+    } catch (_) {}
+  }
 
-    const tMatch =
-      crawlerHtml.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i) ||
-      crawlerHtml.match(/<meta\s+(?:property|name)="description"\s+content="([^"]+)"/i) ||
-      crawlerHtml.match(/<title>([^<]+)<\/title>/i);
-    if (tMatch) metaTitle = decodeHtml(tMatch[1]);
+  // Stage 2: Fetch direct HD/SD MP4 streams from /video/embed and rich metadata from m.facebook.com/watch in parallel
+  const simpleFbHeaders = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Referer": "https://www.facebook.com",
+  };
 
-    const imgMatch =
-      crawlerHtml.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i) ||
-      crawlerHtml.match(/"preferred_thumbnail":\{"image":\{"uri":"([^"]+)"/) ||
-      crawlerHtml.match(/"uri":"(https:\\\/\\\/scontent[^"]+?\.jpg[^"]*)"/);
-    if (imgMatch) metaThumb = cleanStream(imgMatch[1]);
-
-    const ogUrlVal = crawlerHtml.match(/<meta\s+(?:property|name)="og:url"\s+content="([^"]+)"/i)?.[1] || "";
-    const authorSlug = ogUrlVal.match(/facebook\.com\/([^\/]+)\/videos\//i)?.[1];
-    if (authorSlug && !["reel", "reels", "watch", "share"].includes(authorSlug.toLowerCase())) {
-      metaAuthor = `@${authorSlug}`;
-    }
-  } catch (_) {}
-
-  // Stage 2: Extract direct HD & SD MP4 CDN URLs from public embed endpoints + desktop page
   const candidateEndpoints = [];
   if (videoId) {
     candidateEndpoints.push(`https://www.facebook.com/video/embed?video_id=${videoId}`);
+    candidateEndpoints.push(`https://m.facebook.com/watch/?v=${videoId}`);
     candidateEndpoints.push(`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/reel/${videoId}/`)}`);
-    candidateEndpoints.push(`https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/watch/?v=${videoId}`)}`);
-    candidateEndpoints.push(`https://www.facebook.com/reel/${videoId}/`);
+  } else {
+    candidateEndpoints.push(url);
   }
-  candidateEndpoints.push(url);
 
   let hdUrl = null;
   let sdUrl = null;
@@ -951,26 +983,16 @@ async function resolveFacebook(url) {
 
   extractFromHtml(crawlerHtml);
 
-  for (const ep of candidateEndpoints) {
-    if (hdUrl && sdUrl) break;
-    try {
-      const isEmbed = ep.includes("/embed") || ep.includes("/plugins/");
-      const epRes = await fetch(ep, {
-        redirect: "follow",
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-          "Accept-Language": "en-US,en;q=0.9",
-          "Referer": "https://www.facebook.com/",
-          "Sec-Fetch-Dest": isEmbed ? "iframe" : "document",
-          "Sec-Fetch-Mode": "navigate",
-          "Sec-Fetch-Site": isEmbed ? "cross-site" : "none",
-        }
-      });
-      if (!epRes.ok) continue;
-      const epHtml = await epRes.text();
-      extractFromHtml(epHtml);
-    } catch (_) {}
+  // Fetch embed and mobile watch page in parallel for ~400ms total latency
+  const responses = await Promise.all(
+    candidateEndpoints.map(ep =>
+      fetch(ep, { redirect: "follow", headers: simpleFbHeaders })
+        .then(r => (r.ok ? r.text() : ""))
+        .catch(() => "")
+    )
+  );
+  for (const epHtml of responses) {
+    extractFromHtml(epHtml);
   }
 
   const targetVideoUrl = hdUrl || sdUrl;
