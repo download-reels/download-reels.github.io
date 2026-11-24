@@ -805,43 +805,126 @@ async function resolveTikTok(url) {
 }
 
 /**
- * Resolves Facebook Reel or Share link
+ * Resolves Facebook Reel, Watch, or Share link (/share/r/, /share/v/, /reel/, /watch/)
  */
 async function resolveFacebook(url) {
   const headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1",
   };
 
   const res = await fetch(url, { headers, redirect: "follow" });
   const html = await res.text();
+  const finalUrl = res.url || url;
 
-  const hdMatch = html.match(/browser_native_hd_url":"([^"]+)"/) || html.match(/"playable_url_quality_hd":"([^"]+)"/);
-  const sdMatch = html.match(/browser_native_sd_url":"([^"]+)"/) || html.match(/"playable_url":"([^"]+)"/);
+  const idMatch = finalUrl.match(/\/(?:reel|reels|videos)\/(\d+)/i) || url.match(/\/(?:reel|reels|videos|share\/r|share\/v)\/([A-Za-z0-9_-]+)/i);
+  const videoId = idMatch ? idMatch[1] : null;
+
+  const cleanStream = (u) => {
+    if (!u) return null;
+    try {
+      return decodeHtml(
+        JSON.parse(`"${u.replace(/"/g, '\\"')}"`)
+      );
+    } catch (_) {
+      return decodeHtml(
+        u.replace(/\\u0025/g, "%")
+         .replace(/\\u0026/g, "&")
+         .replace(/\\u003C/gi, "<")
+         .replace(/\\u003E/gi, ">")
+         .replace(/\\u003D/gi, "=")
+         .replace(/\\\//g, "/")
+      );
+    }
+  };
+
+  // Narrow search window around the primary video ID if present so we don't grab a suggested reel lower in the feed
+  let searchScope = html;
+  if (videoId && /^\d+$/.test(videoId)) {
+    const idIdx = html.indexOf(`"${videoId}"`);
+    if (idIdx !== -1) {
+      searchScope = html.substring(Math.max(0, idIdx - 5000), Math.min(html.length, idIdx + 25000));
+    }
+  }
+
+  const hdMatch =
+    searchScope.match(/"browser_native_hd_url":"([^"]+)"/) ||
+    searchScope.match(/"playable_url_quality_hd":"([^"]+)"/) ||
+    searchScope.match(/"hd_src_no_ratelimit":"([^"]+)"/) ||
+    searchScope.match(/"hd_src":"([^"]+)"/) ||
+    html.match(/"browser_native_hd_url":"([^"]+)"/) ||
+    html.match(/"playable_url_quality_hd":"([^"]+)"/);
+
+  const sdMatch =
+    searchScope.match(/"browser_native_sd_url":"([^"]+)"/) ||
+    searchScope.match(/"playable_url":"([^"]+)"/) ||
+    searchScope.match(/"sd_src_no_ratelimit":"([^"]+)"/) ||
+    searchScope.match(/"sd_src":"([^"]+)"/) ||
+    html.match(/"browser_native_sd_url":"([^"]+)"/) ||
+    html.match(/"playable_url":"([^"]+)"/);
+
   const ogVideo = html.match(/<meta\s+(?:property|name)="og:video(?::secure_url)?"\s+content="([^"]+)"/i);
-  const titleMatch = html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i) || html.match(/<title>([^<]+)<\/title>/i);
-  const thumbMatch = html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i);
+  const titleMatch =
+    html.match(/<meta\s+(?:property|name)="og:title"\s+content="([^"]+)"/i) ||
+    html.match(/<meta\s+(?:property|name)="description"\s+content="([^"]+)"/i) ||
+    html.match(/<title>([^<]+)<\/title>/i);
 
-  const cleanStream = (u) => u ? decodeHtml(u.replace(/\\u0025/g, "%").replace(/\\u0026/g, "&").replace(/\\\//g, "/")) : null;
+  const thumbMatch =
+    html.match(/<meta\s+(?:property|name)="og:image"\s+content="([^"]+)"/i) ||
+    searchScope.match(/"preferred_thumbnail":\{"image":\{"uri":"([^"]+)"/) ||
+    searchScope.match(/"uri":"(https:\\\/\\\/scontent[^"]+?\.jpg[^"]*)"/);
+
+  const durMatch =
+    searchScope.match(/"playable_duration_in_ms":(\d+)/) ||
+    html.match(/"playable_duration_in_ms":(\d+)/);
+  const durationSec = durMatch ? Math.round(parseInt(durMatch[1], 10) / 1000) : undefined;
+
+  const ogUrlMatch = html.match(/<meta\s+(?:property|name)="og:url"\s+content="([^"]+)"/i);
+  const authorFromUrl = ogUrlMatch?.[1]?.match(/facebook\.com\/([^\/]+)\/videos\//i)?.[1];
+  const authorFromTitle = titleMatch?.[1]?.match(/\|\s*([^|]+?)\s*$/)?.[1];
+  const author = authorFromUrl ? `@${authorFromUrl}` : (authorFromTitle ? decodeHtml(authorFromTitle.trim()) : "Facebook Creator");
 
   const hdUrl = cleanStream(hdMatch?.[1]);
   const sdUrl = cleanStream(sdMatch?.[1]);
   const ogUrl = cleanStream(ogVideo?.[1]);
 
   const targetVideoUrl = hdUrl || sdUrl || ogUrl;
-  if (targetVideoUrl) {
+  if (targetVideoUrl && !targetVideoUrl.includes("lookaside.fbsbx.com")) {
     const formats = [];
-    if (hdUrl) formats.push({ label: "HD MP4 (1080p)", url: hdUrl, quality: "1080p HD", ext: "mp4" });
-    if (sdUrl && sdUrl !== hdUrl) formats.push({ label: "Standard MP4 (720p)", url: sdUrl, quality: "720p", ext: "mp4" });
-    if (formats.length === 0 && targetVideoUrl) formats.push({ label: "MP4 Video", url: targetVideoUrl, quality: "Standard", ext: "mp4" });
+    if (hdUrl) formats.push({ label: "HD MP4 (1080p / 720p)", url: hdUrl, quality: "1080p HD", ext: "mp4" });
+    if (sdUrl && sdUrl !== hdUrl) formats.push({ label: "Standard MP4 (360p Fast)", url: sdUrl, quality: "360p", ext: "mp4" });
+    if (formats.length === 0) formats.push({ label: "MP4 Video", url: targetVideoUrl, quality: "HD", ext: "mp4" });
+
+    // Expose client-side MP3 audio extraction pills
+    formats.push({
+      label: "MP3 Audio (320 kbps Ultra HQ)",
+      url: sdUrl || targetVideoUrl,
+      quality: "320kbps MP3",
+      ext: "mp3",
+      isAudio: true,
+      bitrate: "320k",
+      needsConversion: true,
+    });
+
+    let rawTitle = titleMatch ? decodeHtml(titleMatch[1]) : "Facebook Reel";
+    rawTitle = rawTitle.replace(/^[\d.,]+[KMkm]?\s+views\s*·\s*[\d.,]+[KMkm]?\s+reactions\s*\|\s*/i, "").trim();
 
     return {
       status: "success",
       platform: "facebook",
-      title: titleMatch ? decodeHtml(titleMatch[1]) : "Facebook Reel",
-      author: "Facebook Creator",
+      id: videoId || "fb_reel",
+      title: rawTitle || "Facebook Reel",
+      author,
+      duration: durationSec,
       thumbnailUrl: thumbMatch ? cleanStream(thumbMatch[1]) : null,
       videoUrl: targetVideoUrl,
+      audioUrl: sdUrl || targetVideoUrl,
       formats,
     };
   }
